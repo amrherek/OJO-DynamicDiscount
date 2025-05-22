@@ -18,7 +18,7 @@ public class DynamicDiscountApplication {
 	}
 
 	/**
-	 * Runs the DiscountManager processDiscounts method after application startup.
+	 * Runs the DiscountManager processDiscounts method after application startup...
 	 */
 	@Bean
 	public CommandLineRunner runDiscountManager(ExecutionManager discountManager) {
