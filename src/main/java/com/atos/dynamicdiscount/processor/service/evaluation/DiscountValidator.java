@@ -48,15 +48,27 @@ public class DiscountValidator {
 
 			return false;
 		}
+		
+		
 		List<DynDiscOffer> offers = cfg.getDynDiscOfferMap().getOrDefault(dto.getDiscId().intValue(), emptyList());
-		boolean eligible = offers.stream().anyMatch(
-				o -> o.getTmcode().equals(dto.getTmCode()) && o.getSncode().equals(dto.getOfferSnCode().intValue()));
-		if (!eligible) {
-			log.warn("! AssignId {}: TM/SN ({}/{}) not eligible for DiscId {}.", dto.getAssignId(), dto.getTmCode(),
 
-					dto.getOfferSnCode(), dto.getDiscId());
-			return false;
+		// Check eligibility in a single stream operation
+		boolean eligible = offers.stream().anyMatch(o ->
+		        (o.getTmcode().equals(dto.getTmCode()) && o.getSncode().equals(dto.getOfferSnCode().intValue())) || // Exact match
+		        (o.getTmcode() == -1 && o.getSncode().equals(dto.getOfferSnCode().intValue())) || // SNCode match with TMCode = -1
+		        (o.getSncode() == -1 && o.getTmcode().equals(dto.getTmCode())) || // TMCode match with SNCode = -1
+		        (o.getTmcode() == -1 && o.getSncode() == -1) // Global catch-all
+		);
+
+		// Log and return eligibility
+		if (!eligible) {
+		    log.warn("! AssignId {}: TM/SN ({}/{}) not eligible for DiscId {}.", dto.getAssignId(),
+		            dto.getTmCode(), dto.getOfferSnCode(), dto.getDiscId());
+		    return false;
 		}
+		
+
+		
 
 		// Suspenstion validation
 		if ("S".equals(String.valueOf(dto.getOfferStatus())) && !conf.getSuspInd()) {

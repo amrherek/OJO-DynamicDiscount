@@ -66,8 +66,8 @@ public class DiscountCalculator {
                           .getAloDiscAmt()
                      : 0f;
         } else {
-            discAmt = firstNonZero(offer.getOfferDiscAmt(), conf.getOfferDiscAmt());
-            aloAmt  = aloInd ? firstNonZero(offer.getAloDiscAmt(), conf.getAloDiscAmt()) : 0f;
+            discAmt = offer.getOfferDiscAmt();
+            aloAmt  = aloInd ? offer.getAloDiscAmt(): 0f;
         }
 
         boolean offerCapped = capAndLog("Offer price", discAmt, baseOffer);
@@ -100,14 +100,54 @@ public class DiscountCalculator {
             .build();
     }
 
+
+    
     private Optional<DynDiscOffer> findOffer(DynDiscAssignDTO dto) {
-        return cfg.getDynDiscOfferMap()
-            .getOrDefault(dto.getDiscId().intValue(), List.of())
-            .stream()
-            .filter(o -> o.getTmcode().equals(dto.getTmCode())
-                      && o.getSncode().equals(dto.getOfferSnCode().intValue()))
-            .findFirst();
+        List<DynDiscOffer> offers = cfg.getDynDiscOfferMap()
+            .getOrDefault(dto.getDiscId().intValue(), List.of());
+
+        DynDiscOffer bestMatch = null;
+        int bestPriority = Integer.MAX_VALUE;
+
+        for (DynDiscOffer o : offers) {
+            int priority;
+            if (o.getTmcode().equals(dto.getTmCode()) && o.getSncode().equals(dto.getOfferSnCode().intValue())) {
+                priority = 1; // Exact match
+            } else if (o.getTmcode() == -1 && o.getSncode().equals(dto.getOfferSnCode().intValue())) {
+                priority = 2; // SNCode match with TMCode = -1
+            } else if (o.getSncode() == -1 && o.getTmcode().equals(dto.getTmCode())) {
+                priority = 3; // TMCode match with SNCode = -1
+            } else if (o.getTmcode() == -1 && o.getSncode() == -1) {
+                priority = 4; // Catch-all
+            } else {
+                continue; // Skip irrelevant offers
+            }
+
+            if (priority < bestPriority) {
+                bestPriority = priority;
+                bestMatch = o;
+            }
+        }
+
+        return Optional.ofNullable(bestMatch);
     }
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
     private boolean capAndLog(String label, float value, float max) {
         if (value > max) {

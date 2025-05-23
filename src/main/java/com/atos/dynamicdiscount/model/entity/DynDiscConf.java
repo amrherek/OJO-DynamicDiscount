@@ -32,12 +32,6 @@ public class DynDiscConf {
 	@Column(name = "duration")
 	private Integer duration;
 
-	@Column(name = "offer_disc_amt")
-	private float offerDiscAmt;
-
-	@Column(name = "alo_disc_amt")
-	private float aloDiscAmt;
-
 	@Column(name = "occ_sncode")
 	private Integer occSncode;
 
