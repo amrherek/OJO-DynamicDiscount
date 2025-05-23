@@ -50,7 +50,7 @@ public class DiscountGrantingService {
 			amount = grant.getAloDiscAmount();
 		}
 
-		if (amount != null && amount >= 0) {
+		if (amount != null && amount != 0) {
 			boolean success = false;
 			try {
 				LocalDateTime validFrom = eval.getBillPeriodEndDate().minusDays(1);
@@ -84,11 +84,11 @@ public class DiscountGrantingService {
 			// Set OCC created flag to null if no valid amount to process (not created)
 			if ("Offer".equals(discountType)) {
 				grant.setOfferOccCreated(false);
-				log.info("- coId={} : Offer OCC not created (AssignId={}): Invalid/null amount.", eval.getCoId(),
+				log.info("- coId={} : Offer OCC not created (AssignId={}): Zero/null amount.", eval.getCoId(),
 						eval.getAssignId());
 			} else if ("ALO".equals(discountType)) {
 				grant.setAloOccCreated(false);
-				log.info("- coId={} : ALO OCC not created (AssignId={}): Invalid/null amount.", eval.getCoId(),
+				log.info("- coId={} : ALO OCC not created (AssignId={}): Zero/null amount.", eval.getCoId(),
 						eval.getAssignId());
 			}
 

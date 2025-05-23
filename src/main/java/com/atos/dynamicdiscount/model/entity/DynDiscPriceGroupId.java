@@ -17,7 +17,7 @@ import lombok.ToString;
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-public class DynDiscCustGrpExclId implements Serializable {
+public class DynDiscPriceGroupId implements Serializable {
 
     @Column(name = "disc_id", nullable = false)
     private Integer discId;

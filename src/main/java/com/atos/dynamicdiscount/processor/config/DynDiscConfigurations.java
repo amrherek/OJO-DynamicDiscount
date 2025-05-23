@@ -8,8 +8,8 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 import com.atos.dynamicdiscount.model.entity.DynDiscConf;
-import com.atos.dynamicdiscount.model.entity.DynDiscCustGrpExcl;
-import com.atos.dynamicdiscount.model.entity.DynDiscCustGrpExclId;
+import com.atos.dynamicdiscount.model.entity.DynDiscPriceGroup;
+import com.atos.dynamicdiscount.model.entity.DynDiscPriceGroupId;
 import com.atos.dynamicdiscount.model.entity.DynDiscFreeMonth;
 import com.atos.dynamicdiscount.model.entity.DynDiscFreeMonthId;
 import com.atos.dynamicdiscount.model.entity.DynDiscOffer;
@@ -17,7 +17,7 @@ import com.atos.dynamicdiscount.model.entity.DynDiscSpecialMonth;
 import com.atos.dynamicdiscount.model.entity.DynDiscSpecialMonthId;
 import com.atos.dynamicdiscount.model.entity.DynDiscType;
 import com.atos.dynamicdiscount.repository.DynDiscConfRepository;
-import com.atos.dynamicdiscount.repository.DynDiscCustGrpExclRepository;
+import com.atos.dynamicdiscount.repository.DynDiscPriceGroupRepository;
 import com.atos.dynamicdiscount.repository.DynDiscFreeMonthRepository;
 import com.atos.dynamicdiscount.repository.DynDiscOfferRepository;
 import com.atos.dynamicdiscount.repository.DynDiscSpecialMonthRepository;
@@ -36,7 +36,7 @@ public class DynDiscConfigurations {
 
 	private final DynDiscTypeRepository dynDiscTypeRepository;
 	private final DynDiscConfRepository dynDiscConfRepository;
-	private final DynDiscCustGrpExclRepository dynDiscCustGrpExclRepository;
+	private final DynDiscPriceGroupRepository dynDiscPriceGroupRepository;
 	private final DynDiscOfferRepository dynDiscOfferRepository;
 	private final DynDiscSpecialMonthRepository dynDiscSpecialMonthRepository;
 	private final DynDiscFreeMonthRepository dynDiscFreeMonthRepository;
@@ -45,7 +45,7 @@ public class DynDiscConfigurations {
 	private Map<Integer, DynDiscConf> dynDiscConfMap;
 	//private Map<Integer, DynDiscOffer> dynDiscOfferMap;
 	public Map<Integer, List<DynDiscOffer>> dynDiscOfferMap; 
-	private Map<DynDiscCustGrpExclId, DynDiscCustGrpExcl> dynDiscCustGrpExclMap;
+	private Map<DynDiscPriceGroupId, DynDiscPriceGroup> DynDiscPriceGroupMap;
 	private Map<DynDiscSpecialMonthId, DynDiscSpecialMonth> dynDiscSpecialMonthMap;
 	private Map<DynDiscFreeMonthId, DynDiscFreeMonth> dynDiscFreeMonthMap;
 
@@ -56,7 +56,7 @@ public class DynDiscConfigurations {
 		dynDiscOfferMap =buildDiscIdToOffersMap();
 		dynDiscConfMap = mapEntities(dynDiscConfRepository.findAll(), DynDiscConf::getDiscId);
 		dynDiscTypeMap = mapEntities(dynDiscTypeRepository.findAll(), DynDiscType::getTypeId);
-		dynDiscCustGrpExclMap = mapEntities(dynDiscCustGrpExclRepository.findAll(), DynDiscCustGrpExcl::getId);
+		DynDiscPriceGroupMap = mapEntities(dynDiscPriceGroupRepository.findAll(), DynDiscPriceGroup::getId);
 		dynDiscSpecialMonthMap = mapEntities(dynDiscSpecialMonthRepository.findAll(), DynDiscSpecialMonth::getId);
 		dynDiscFreeMonthMap = mapEntities(dynDiscFreeMonthRepository.findAll(), DynDiscFreeMonth::getId);
 		log.info("Configuration data loaded successfully.");

@@ -4,13 +4,15 @@ import static java.util.Collections.emptyList;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
 import com.atos.dynamicdiscount.model.dto.DynDiscAssignDTO;
 import com.atos.dynamicdiscount.model.entity.DynDiscConf;
-import com.atos.dynamicdiscount.model.entity.DynDiscCustGrpExclId;
 import com.atos.dynamicdiscount.model.entity.DynDiscOffer;
+import com.atos.dynamicdiscount.model.entity.DynDiscPriceGroup;
 import com.atos.dynamicdiscount.processor.config.DynDiscConfigurations;
 
 import lombok.RequiredArgsConstructor;
@@ -21,70 +23,135 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class DiscountValidator {
 
-	private final DynDiscConfigurations cfg;
+    private final DynDiscConfigurations cfg;
 
-	/**
-	 * Extracted and centralized all validity checks from DiscountProcessor.
-	 */
-	public boolean isValid(DynDiscAssignDTO dto, LocalDateTime cutoffDate) {
-		DynDiscConf conf = cfg.getDynDiscConfMap().get(dto.getDiscId().intValue());
-		if (conf == null) {
-			log.warn("! AssignId {}: No config for DiscId {}.", dto.getAssignId(), dto.getDiscId());
-			return false;
-		}
-		if (conf.getValidTo() != null && !conf.getValidTo().isAfter(cutoffDate)) {
-			log.info("! AssignId {}: Expired on {}.", dto.getAssignId(), conf.getValidTo());
-			return false;
-		}
-		Integer applied = dto.getApplyCount() != null ? dto.getApplyCount().intValue() : 0;
-		if (conf.getDuration() != null && conf.getDuration() != -1 && applied >= conf.getDuration()) {
-			log.info("! AssignId {}: Limit reached.", dto.getAssignId());
-			return false;
-		}
-		DynDiscCustGrpExclId exclId = new DynDiscCustGrpExclId(dto.getDiscId().intValue(), dto.getPrgcode());
-		if (cfg.getDynDiscCustGrpExclMap().containsKey(exclId)) {
-			log.info("! AssignId {}: Discount not allowed - Customer price group '{}' is excluded.", dto.getAssignId(),
-					dto.getPrgcode());
+    /**
+     * Determines if a discount assignment is valid based on various criteria.
+     */
+    public boolean isValid(DynDiscAssignDTO dto, LocalDateTime cutoffDate) {
+        if (!hasValidConfig(dto, cutoffDate)) {
+            return false;
+        }
 
-			return false;
-		}
-		
-		
-		List<DynDiscOffer> offers = cfg.getDynDiscOfferMap().getOrDefault(dto.getDiscId().intValue(), emptyList());
+        if (isPriceGroupExcluded(dto)) {
+            return false;
+        }
 
-		// Check eligibility in a single stream operation
-		boolean eligible = offers.stream().anyMatch(o ->
-		        (o.getTmcode().equals(dto.getTmCode()) && o.getSncode().equals(dto.getOfferSnCode().intValue())) || // Exact match
-		        (o.getTmcode() == -1 && o.getSncode().equals(dto.getOfferSnCode().intValue())) || // SNCode match with TMCode = -1
-		        (o.getSncode() == -1 && o.getTmcode().equals(dto.getTmCode())) || // TMCode match with SNCode = -1
-		        (o.getTmcode() == -1 && o.getSncode() == -1) // Global catch-all
-		);
+        if (!isOfferEligible(dto)) {
+            return false;
+        }
 
-		// Log and return eligibility
-		if (!eligible) {
-		    log.warn("! AssignId {}: TM/SN ({}/{}) not eligible for DiscId {}.", dto.getAssignId(),
-		            dto.getTmCode(), dto.getOfferSnCode(), dto.getDiscId());
-		    return false;
-		}
-		
+        if (!isOfferStatusPermitted(dto)) {
+            return false;
+        }
 
-		
+        log.info("✓ AssignId {}: Valid discount.", dto.getAssignId());
+        return true;
+    }
 
-		// Suspenstion validation
-		if ("S".equals(String.valueOf(dto.getOfferStatus())) && !conf.getSuspInd()) {
+    /**
+     * Checks if the discount configuration exists, is active, and its application limit has not been reached.
+     */
+    private boolean hasValidConfig(DynDiscAssignDTO dto, LocalDateTime cutoffDate) {
+        DynDiscConf conf = cfg.getDynDiscConfMap().get(dto.getDiscId().intValue());
+        if (conf == null) {
+            log.warn("! AssignId {}: No config for DiscId {}.", dto.getAssignId(), dto.getDiscId());
+            return false;
+        }
 
-			log.info("! AssignId {}: Discount not allowed - Offer Eligible, Status: 'Suspended'. SNCode: {}",
-					dto.getAssignId(), dto.getOfferSnCode());
-			return false;
-		}
+        if (conf.getValidTo() != null && !conf.getValidTo().isAfter(cutoffDate)) {
+            log.info("! AssignId {}: Expired on {}.", dto.getAssignId(), conf.getValidTo());
+            return false;
+        }
 
-		if ("O".equals(String.valueOf(dto.getOfferStatus()))) {
-			log.info("! AssignId {}: Discount not allowed - Offer Eligible, Status: 'On Hold'. SNCode: {}",
-					dto.getAssignId(), dto.getOfferSnCode());
-			return false;
-		}
+        int applied = dto.getApplyCount() != null ? dto.getApplyCount().intValue(): 0;
+        if (conf.getDuration() != null && conf.getDuration() != -1 && applied >= conf.getDuration()) {
+            log.info("! AssignId {}: Limit reached.", dto.getAssignId());
+            return false;
+        }
 
-		log.info("✓ AssignId {}: Valid discount.", dto.getAssignId());
-		return true;
-	}
+        return true;
+    }
+
+    /**
+     * Checks if the customer's price group is excluded or restricted from the discount.
+     */
+    private boolean isPriceGroupExcluded(DynDiscAssignDTO dto) {
+
+        // advanced price group rules
+        List<DynDiscPriceGroup> groups = cfg.getDynDiscPriceGroupMap().values().stream()
+            .filter(pg -> pg.getId().getDiscId().equals(dto.getDiscId().intValue()))
+            .filter(pg -> pg.isRestrictInd() != pg.isProhibitInd()) // Filter out invalid entries
+            .collect(Collectors.toList());
+
+        if (groups.isEmpty()) {
+            return false; // No specific price group rules apply, so not excluded by this logic
+        }
+
+        Set<String> restricted = groups.stream()
+            .filter(DynDiscPriceGroup::isRestrictInd)
+            .map(pg -> pg.getId().getPrgcode())
+            .collect(Collectors.toSet());
+
+        if (!restricted.isEmpty() && !restricted.contains(dto.getPrgcode())) {
+            log.info("! AssignId {}: Discount restricted - Customer price group '{}' not allowed.",
+                     dto.getAssignId(), dto.getPrgcode());
+            return true; // Excluded by restriction
+        }
+
+        Set<String> prohibited = groups.stream()
+            .filter(DynDiscPriceGroup::isProhibitInd)
+            .map(pg -> pg.getId().getPrgcode())
+            .collect(Collectors.toSet());
+
+        if (!prohibited.isEmpty() && prohibited.contains(dto.getPrgcode())) {
+            log.info("! AssignId {}: Discount prohibited - Customer price group '{}' is excluded.",
+                     dto.getAssignId(), dto.getPrgcode());
+            return true; // Excluded by prohibition
+        }
+
+        return false; // Not explicitly excluded by price group rules
+    }
+
+    /**
+     * Checks if the discount offer is eligible based on TMCode and SNCode matching.
+     */
+    private boolean isOfferEligible(DynDiscAssignDTO dto) {
+        List<DynDiscOffer> offers = cfg.getDynDiscOfferMap()
+            .getOrDefault(dto.getDiscId().intValue(), emptyList());
+
+        boolean match = offers.stream().anyMatch(o ->
+            (o.getTmcode().equals(dto.getTmCode()) && o.getSncode().equals(dto.getOfferSnCode().intValue())) || // Exact match
+            (o.getTmcode() == -1 && o.getSncode().equals(dto.getOfferSnCode().intValue())) || // SNCode match with TMCode = -1
+            (o.getSncode() == -1 && o.getTmcode().equals(dto.getTmCode())) || // TMCode match with SNCode = -1
+            (o.getTmcode() == -1 && o.getSncode() == -1) // Global catch-all
+        );
+
+        if (!match) {
+            log.warn("! AssignId {}: TM/SN ({}/{}) not eligible for DiscId {}.", dto.getAssignId(),
+                     dto.getTmCode(), dto.getOfferSnCode(), dto.getDiscId());
+        }
+
+        return match;
+    }
+
+    /**
+     * Checks if the offer status (e.g., Suspended, On Hold) permits the discount application.
+     */
+    private boolean isOfferStatusPermitted(DynDiscAssignDTO dto) {
+        DynDiscConf conf = cfg.getDynDiscConfMap().get(dto.getDiscId().intValue());
+
+        if ("S".equals(String.valueOf(dto.getOfferStatus())) && !conf.getSuspInd()) {
+            log.info("! AssignId {}: Discount not allowed - Offer Suspended. SNCode: {}", dto.getAssignId(), dto.getOfferSnCode());
+            return false;
+        }
+
+        if ("O".equals(String.valueOf(dto.getOfferStatus()))) {
+            log.info("! AssignId {}: Discount not allowed - Offer On Hold. SNCode: {}", dto.getAssignId(), dto.getOfferSnCode());
+            return false;
+        }
+
+        return true;
+    }
+
 }
