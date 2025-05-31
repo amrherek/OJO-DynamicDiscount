@@ -14,6 +14,7 @@ public class DynDiscAssignDTO {
 	private BigDecimal discSncode;
 	private BigDecimal discId;
 	private BigDecimal applyCount;
+	private BigDecimal ovwApplyCount;
 	private BigDecimal customerId;
 	private BigDecimal coId;
 	private Date lbcDate;

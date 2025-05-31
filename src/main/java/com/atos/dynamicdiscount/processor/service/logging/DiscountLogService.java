@@ -46,13 +46,28 @@ public class DiscountLogService {
 			log.error("DynDiscContract missing; skipping contract update.");
 			return;
 		}
-
+		
+		
 		if (grant != null) {
-			contract.setStatus(!Boolean.FALSE.equals(grant.getOfferOccCreated()) && !Boolean.FALSE.equals(grant.getAloOccCreated()) ? "P" : "F");
-			contract.setRemark("AssignId=" + grant.getAssignId() + ": " + (contract.getStatus().equals("P") ? "Successfully applied." : "Either ALO or Offer OCC creation failed."));
-		} else {
-			log.debug("DynDiscGrantHistory missing; contract status not updated based on grant.");
+		    boolean offerOccFailed = Boolean.FALSE.equals(grant.getOfferOccCreated()) && grant.getOfferDiscAmount() != 0;
+		    boolean aloOccFailed = Boolean.FALSE.equals(grant.getAloOccCreated()) && grant.getAloDiscAmount() != 0;
+
+		    contract.setStatus((offerOccFailed || aloOccFailed) ? "F" : "P");
+
+		    String remark = "AssignId=" + grant.getAssignId() + ": " + 
+		                    (contract.getStatus().equals("P") ? 
+		                     "Successfully applied." : 
+		                     "Failed due to: " + 
+		                     (offerOccFailed ? "Offer OCC creation failure" : "") +
+		                     (offerOccFailed && aloOccFailed ? " and " : "") +
+		                     (aloOccFailed ? "ALO OCC creation failure" : "") + ".");
+		    contract.setRemark(remark);
 		}
+		else {
+			log.debug("DynDiscGrantHistory missing; No grant recorded");
+		}
+
+		
 		contractRepo.save(contract);
 		log.debug("DynDiscContract [{}] saved.", contract.getCoId());
 

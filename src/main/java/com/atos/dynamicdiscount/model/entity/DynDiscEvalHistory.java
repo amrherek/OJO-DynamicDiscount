@@ -86,5 +86,8 @@ public class DynDiscEvalHistory implements Serializable {
 
 	@Column(name = "ALO_STATUS")
 	private String aloStatus;
+	
+	@Column(name = "username")
+	private String username;
 
 }

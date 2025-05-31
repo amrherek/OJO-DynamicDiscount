@@ -4,6 +4,7 @@ package com.atos.dynamicdiscount.processor.service.evaluation;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.atos.dynamicdiscount.model.dto.DynDiscAssignDTO;
@@ -22,6 +23,9 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class DiscountCalculator {
+	
+	@Value("${spring.datasource.username:DYN_DISC}")
+	private String username;
 
     private final DynDiscConfigurations cfg;
 
@@ -97,6 +101,7 @@ public class DiscountCalculator {
             .note("Successfully applied")
             .aloOccCreated(false)
             .offerOccCreated(false)
+            .username(username)
             .build();
     }
 

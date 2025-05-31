@@ -63,8 +63,18 @@ public class DiscountValidator {
             log.info("! AssignId {}: Expired on {}.", dto.getAssignId(), conf.getValidTo());
             return false;
         }
+        
+        
+        
+        int applied = dto.getApplyCount() != null ? dto.getApplyCount().intValue() : 0;
+        int limit = (dto.getOvwApplyCount() != null) ? dto.getOvwApplyCount().intValue() : (conf.getDuration() != null ? conf.getDuration() : -1);
+        if (limit != -1 && applied >= limit) {
+            log.info("! AssignId {}: Limit reached.", dto.getAssignId());
+            return false;
+        }
+        
+                
 
-        int applied = dto.getApplyCount() != null ? dto.getApplyCount().intValue(): 0;
         if (conf.getDuration() != null && conf.getDuration() != -1 && applied >= conf.getDuration()) {
             log.info("! AssignId {}: Limit reached.", dto.getAssignId());
             return false;

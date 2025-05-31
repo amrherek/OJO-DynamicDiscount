@@ -55,7 +55,13 @@ public class DynDiscAssign {
 	@Column(name = "apply_count")
 	private Integer applyCount;
 	
+	@Column(name = "ovw_apply_count")
+	private Integer ovwApplyCount;
+	
 	@Column(name = "gmd_request")
 	private Integer gmdRequest;
+	
+	@Column(name = "username")
+	private String username;
 
 }

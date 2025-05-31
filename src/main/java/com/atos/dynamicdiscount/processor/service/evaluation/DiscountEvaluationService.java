@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.atos.dynamicdiscount.model.dto.DynDiscAssignDTO;
@@ -26,7 +27,9 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class DiscountEvaluationService {
-
+	
+	@Value("${spring.datasource.username:DYN_DISC}")
+	private String username;
 	private final DiscountValidator discountValidator;
 	private final DiscountCalculator discountCalculator;
 	private final DynDiscConfigurations cfg;
@@ -98,7 +101,7 @@ public class DiscountEvaluationService {
 				.offerStatus(String.valueOf(latest.getOfferStatus())).offerPrice(latest.getOfferPrice().floatValue())
 				.aloSncode(latest.getAloSnCode().intValue())
 				.aloValidFrom(latest.getAloValidFromDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime())
-				.aloStatus(String.valueOf(latest.getAloStatus())).aloPrice(latest.getAloPrice().floatValue()).build();
+				.aloStatus(String.valueOf(latest.getAloStatus())).aloPrice(latest.getAloPrice().floatValue()).username(username).build();
 	}
 
 }

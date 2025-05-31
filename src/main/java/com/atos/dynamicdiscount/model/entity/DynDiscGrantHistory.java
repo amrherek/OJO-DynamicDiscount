@@ -64,4 +64,7 @@ public class DynDiscGrantHistory implements Serializable {
 	
 	@Column(name = "ALO_OCC_CREATED")
 	private Boolean aloOccCreated;
+	
+	@Column(name = "username")
+	private String username;
 }

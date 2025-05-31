@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
@@ -24,6 +25,9 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class GmdActionHandler {
 
+	@Value("${spring.datasource.username:DYN_DISC}")
+	private String username;
+	
 	@Autowired
 	private DynDiscAssignRepository dynDiscAssignRepository;
 
@@ -123,6 +127,8 @@ public class GmdActionHandler {
 		assign.setAssignDate(request.getValidFromDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
 		assign.setGmdRequest(request.getRequest().intValue());
 		assign.setApplyCount(0);
+		assign.setOvwApplyCount(null);
+		assign.setUsername(username);
 		return assign;
 	}
 

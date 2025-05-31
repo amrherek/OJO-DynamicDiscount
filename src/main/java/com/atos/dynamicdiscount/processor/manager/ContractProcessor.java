@@ -62,8 +62,7 @@ public class ContractProcessor {
 				// 3) Record the discount lifecycle event
 				logService.recordDiscountLifecycle(discGrantEval, cutoff);
 				log.info("< coId={} : processing complete", coId); // Indicate successful processing
-				
-				
+
 				}
 
 			 catch (Exception ex) {
