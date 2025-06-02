@@ -16,11 +16,7 @@ public class DynamicDiscountApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(DynamicDiscountApplication.class, args);
 	}
-
-	/**
-	 * Runs the DiscountManager processDiscounts method after application startup...
-	 */
-	@Bean
+/*	@Bean
 	public CommandLineRunner runDiscountManager(ExecutionManager discountManager) {
 		return args -> {
 			String billCycle = "90";
@@ -32,5 +28,6 @@ public class DynamicDiscountApplication {
 			}
 		};
 	}
+	*/
 
 }

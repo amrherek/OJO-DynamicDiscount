@@ -23,46 +23,40 @@ public class BillCycleService {
 
     /**
      * Validates that the provided bill cycle string matches a known cycle.
-     * @param billCycle the bill cycle code to validate
-     * @throws InvalidBillCycleException if the code is unrecognized
      */
-    public void validateBillCycle(String billCycle) {
+    
+    
+    public BillCycle validateBillCycle(String billCycle) {
         try {
-            BillCycle.fromString(billCycle);
+            return BillCycle.fromString(billCycle);
         } catch (IllegalArgumentException ex) {
-            log.error("Invalid bill cycle [{}]", billCycle);
-            throw new InvalidBillCycleException("Invalid bill cycle: " + billCycle, ex);
+            log.warn("! Invalid bill cycle [{}]", billCycle);
+            return null;
         }
     }
 
+
     /**
      * Retrieves the cutoff date for the given bill cycle.
-     * @param billCycle the bill cycle code
-     * @return the cutoff date (never in the future)
-     * @throws InvalidBillCycleException if no date is found or it is in the future
      */
     public LocalDateTime fetchCutoffDate(String billCycle) {
         LocalDateTime cutoffDate = billCycleDefinitionRepository
                 .findTargetRunDateByBillCycle(billCycle);
 
         if (cutoffDate == null) {
-            log.error("No cutoff date found for bill cycle [{}]", billCycle);
-            throw new InvalidBillCycleException(
-                "No cutoff date for bill cycle: " + billCycle
-            );
+            log.warn("! No cutoff date found for bill cycle [{}]", billCycle);
+            return cutoffDate; 
+  
         }
 
         if (cutoffDate.isAfter(LocalDateTime.now())) {
-            log.error(
-                "Cutoff date [{}] for bill cycle [{}] is in the future", cutoffDate, billCycle
+        	log.warn(
+                "! Cutoff date [{}] for bill cycle [{}] is in the future", cutoffDate, billCycle
             );
-            throw new InvalidBillCycleException(
-                "Cutoff date for bill cycle " + billCycle
-                + " is in the future: " + cutoffDate
-            );
+            return null;
         }
 
-        log.info("Cutoff date for [{}] is {}", billCycle, cutoffDate);
+        log.info("√ Cutoff date for [{}] is {}", billCycle, cutoffDate);
         return cutoffDate;
     }
 }

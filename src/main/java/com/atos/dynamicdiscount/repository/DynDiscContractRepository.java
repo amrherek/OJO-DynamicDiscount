@@ -38,6 +38,7 @@ public interface DynDiscContractRepository extends JpaRepository<DynDiscContract
 			      ON ca.customer_id = cu.customer_id
 			    WHERE
 			      d.assign_date < :targetDate
+			      AND ca.co_id in (20549596,31173998,34225032)
 			      AND (d.delete_date IS NULL OR d.delete_date >= :targetDate)
 			      AND (d.expire_date IS NULL OR d.expire_date >= :targetDate)
 			      AND (d.last_applied_date is NULL or d.last_applied_date < :targetDate)

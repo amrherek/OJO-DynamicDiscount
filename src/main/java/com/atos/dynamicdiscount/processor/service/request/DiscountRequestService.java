@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.springframework.stereotype.Service;
@@ -75,6 +76,7 @@ public class DiscountRequestService {
         DynDiscRequest request = new DynDiscRequest();
         Integer nextRequestId = requestRepo.getNextAvailableRequestId();
         request.setRequestId(nextRequestId);
+        request.setStatus("W");        
         request.setBillcycle(billCycle);
         request.setBillPeriodEndDate(cutoffDate);
         log.info("New discount request created with ID '{}'.", nextRequestId);
@@ -149,23 +151,23 @@ public class DiscountRequestService {
     @Transactional
     public void resetFailedContracts(Integer requestId) {
         int updated = contractRepo.resetFailedContracts(requestId);
-        log.info("Reset {} failed contracts to 'I' for request {}", updated, requestId);
+        log.info("-> Reset {} failed contracts to 'I' for request {}", updated, requestId);
     }
 
     /** Retrieves contracts by status for a specific request. */
     public List<DynDiscContract> getContractsByStatus(Integer requestId, String status) {
         List<DynDiscContract> contracts = contractRepo.getContractsByStatus(requestId, status);
-        log.info("Retrieved {} contracts with status '{}' for request {}", contracts.size(), status, requestId);
+        log.info("-> Retrieved {} contracts with status '{}' for request {}", contracts.size(), status, requestId);
         return contracts;
     }
 
     /** Fetches the ongoing discount request, if any. */
     public DynDiscRequest fetchOngoingRequest() {
         List<DynDiscRequest> ongoingRequests = requestRepo.findByStatus("W");
-        if (ongoingRequests.size() > 1) {
-            throw new MultipleOngoingRequestsException(
-                    "Expected at most one ongoing request, but found " + ongoingRequests.size());
-        }
         return ongoingRequests.isEmpty() ? null : ongoingRequests.get(0);
     }
+
+	public DynDiscRequest fetchRequestById(int requestId) {
+	    return requestRepo.findById(requestId).orElse(null);	    	
+	}
 }

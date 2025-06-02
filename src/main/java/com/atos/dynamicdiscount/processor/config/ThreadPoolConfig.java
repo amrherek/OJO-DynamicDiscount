@@ -3,15 +3,17 @@ package com.atos.dynamicdiscount.processor.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @Configuration
+@EnableAsync
 public class ThreadPoolConfig {
 
-	@Value("${threadpool.corePoolSize:1}")
+	@Value("${threadpool.corePoolSize:2")
 	private int corePoolSize;
 
-	@Value("${threadpool.maxPoolSize:1}")
+	@Value("${threadpool.maxPoolSize:2}")
 	private int maxPoolSize;
 
 	@Value("${threadpool.queueCapacity:50}")

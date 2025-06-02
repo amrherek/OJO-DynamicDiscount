@@ -1,5 +1,8 @@
 package com.atos.dynamicdiscount.model.entity;
 
+import java.time.LocalDateTime;
+import java.util.Date;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -34,6 +37,12 @@ public class DynDiscOffer {
 
 	@Column(name = "alo_disc_amt")
 	private Float aloDiscAmt;
+	
+	@Column(name = "elig_start_date")
+	private LocalDateTime eligStartDate;
+	
+	@Column(name = "elig_end_date")
+	private LocalDateTime eligEndDate;
 
 	@Column(name = "free_month_ind")
 	private Boolean freeMonthInd;

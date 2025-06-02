@@ -62,8 +62,14 @@ public class DiscountGrantingService {
 				Integer coId = eval.getCoId();
 
 				// Call the stored procedure to grant the OCC
-				jdbcTemplate.update("CALL bscs_wd.mcd_wan_pkg.man_addocc(?, ?, ?, ?, ?, ?, ?, ?, ?)", customerId, coId,
-						validFrom, amount, remark, glcode, sncode, tmcode, validFrom);
+				//jdbcTemplate.update("CALL bscs_wd.mcd_wan_pkg.man_addocc(?, ?, ?, ?, ?, ?, ?, ?, ?)", customerId, coId,
+					//	validFrom, amount * -1 , remark, glcode, sncode, tmcode, validFrom);
+				
+				
+				jdbcTemplate.update("CALL insert_promo_results(?, ?, ?, ?, ?, ?, ?, ?, ?)", customerId, coId,
+						validFrom, amount*-1, remark, glcode, sncode, tmcode, validFrom);
+				
+				
 
 				success = true;
 				log.info("✓ coId={} : {} discount OCC granted (AssignId={})", coId, discountType, eval.getAssignId());

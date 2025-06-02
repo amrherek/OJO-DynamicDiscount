@@ -1,10 +1,10 @@
 package com.atos.dynamicdiscount.processor.service.evaluation;
 
-import static java.util.Comparator.comparing;
-
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -41,24 +41,46 @@ public class DiscountEvaluationService {
 			if (discounts == null || discounts.isEmpty()) {
 				return buildResult(contract, null, null, "S", "No discounts provided");
 			}
+			
+			
+			Map<Long, String> discountErrors = new HashMap<>();
+
 
 			// 1) Partition via validationService
 			Map<Boolean, List<DynDiscAssignDTO>> parts = discounts.stream()
-					.collect(Collectors.partitioningBy(d -> discountValidator.isValid(d, cutoffDate)));
-
-			// 1) Split into unmodifiable valid/invalid lists
-			List<DynDiscAssignDTO> valid   = Collections.unmodifiableList(parts.get(true));
+				    .collect(Collectors.partitioningBy(d -> {
+				        StringBuilder error = new StringBuilder();
+				        boolean isValid = discountValidator.isValid(d, cutoffDate, error);
+				        if (!isValid) {
+				            discountErrors.put(d.getAssignId().longValue(), error.toString());
+				        }
+				        return isValid;
+				    }));
+			
+			
+			// 3) Split into unmodifiable valid/invalid lists
+			List<DynDiscAssignDTO> valid = Collections.unmodifiableList(parts.get(true));
 			List<DynDiscAssignDTO> invalid = Collections.unmodifiableList(parts.get(false));
+			
 
-			// 2) If there are no valid discounts, short-circuit
+			// 4) If there are no valid discounts, short-circuit
 			if (valid.isEmpty()) {
-			    String remark = String.format("No valid discounts (%d invalid).", invalid.size());
+			    // Rebuild the remark from the discountErrors map
+			    String remark = "No valid discount (" + discountErrors.size() + " invalid)";				
+
+			    // Append detailed errors from discountErrors map			    
+			    String detailedErrors = discountErrors.entrySet().stream()
+			    	    .map(entry -> String.format("[%s]", entry.getValue())) // Wrap each value in brackets
+			    	    .collect(Collectors.joining("; "));
+			    
+		        remark += ": " + detailedErrors;
+
 			    return buildResult(contract, null, null, "S", remark);
 			}
 
 			// 3) Otherwise pick the latest valid assignment
 			DynDiscAssignDTO latest = valid.stream()
-			    .max(comparing(DynDiscAssignDTO::getAssignDate)
+			    .max(Comparator.comparing(DynDiscAssignDTO::getAssignDate)
 			         .thenComparing(DynDiscAssignDTO::getAssignId)).get();  
 
 			log.info("✓ AssignId {}: Selected for processing.", latest.getAssignId());

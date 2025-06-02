@@ -1,8 +1,8 @@
 package com.atos.dynamicdiscount.processor.service.evaluation;
 
-import static java.util.Collections.emptyList;
-
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -28,23 +28,19 @@ public class DiscountValidator {
     /**
      * Determines if a discount assignment is valid based on various criteria.
      */
-    public boolean isValid(DynDiscAssignDTO dto, LocalDateTime cutoffDate) {
-        if (!hasValidConfig(dto, cutoffDate)) {
+    public boolean isValid(DynDiscAssignDTO dto, LocalDateTime cutoffDate, StringBuilder error) {
+        if (!hasValidConfig(dto, cutoffDate, error)) {
             return false;
         }
-
-        if (isPriceGroupExcluded(dto)) {
+        if (isPriceGroupExcluded(dto, error)) {
             return false;
         }
-
-        if (!isOfferEligible(dto)) {
+        if (!isOfferEligible(dto, error)) {
             return false;
         }
-
-        if (!isOfferStatusPermitted(dto)) {
+        if (!isOfferStatusPermitted(dto, error)) {
             return false;
         }
-
         log.info("✓ AssignId {}: Valid discount.", dto.getAssignId());
         return true;
     }
@@ -52,116 +48,137 @@ public class DiscountValidator {
     /**
      * Checks if the discount configuration exists, is active, and its application limit has not been reached.
      */
-    private boolean hasValidConfig(DynDiscAssignDTO dto, LocalDateTime cutoffDate) {
+    private boolean hasValidConfig(DynDiscAssignDTO dto, LocalDateTime cutoffDate, StringBuilder error) {
         DynDiscConf conf = cfg.getDynDiscConfMap().get(dto.getDiscId().intValue());
         if (conf == null) {
-            log.warn("! AssignId {}: No config for DiscId {}.", dto.getAssignId(), dto.getDiscId());
+            String errMsg = String.format("! AssignId %s: No config for DiscId %s.", dto.getAssignId(), dto.getDiscId());
+            log.warn(errMsg);
+            error.append(errMsg);
             return false;
         }
 
-        if (conf.getValidTo() != null && !conf.getValidTo().isAfter(cutoffDate)) {
-            log.info("! AssignId {}: Expired on {}.", dto.getAssignId(), conf.getValidTo());
+        if ((conf.getValidTo() != null && !conf.getValidTo().isAfter(cutoffDate))
+                || (conf.getValidFrom() != null && !conf.getValidFrom().isBefore(cutoffDate))) {
+            String errMsg = String.format(
+                "! AssignId %s: Not valid for cutoffDate %s (ValidFrom: %s, ValidTo: %s).",
+                dto.getAssignId(), cutoffDate, conf.getValidFrom(), conf.getValidTo());
+            log.info(errMsg);
+            error.append(errMsg);
             return false;
         }
-        
-        
-        
+
         int applied = dto.getApplyCount() != null ? dto.getApplyCount().intValue() : 0;
-        int limit = (dto.getOvwApplyCount() != null) ? dto.getOvwApplyCount().intValue() : (conf.getDuration() != null ? conf.getDuration() : -1);
+        int limit = (dto.getOvwApplyCount() != null) ? dto.getOvwApplyCount().intValue()
+                : (conf.getDuration() != null ? conf.getDuration() : -1);
         if (limit != -1 && applied >= limit) {
-            log.info("! AssignId {}: Limit reached.", dto.getAssignId());
+            String errMsg = String.format("! AssignId %s: Limit reached.", dto.getAssignId());
+            log.info(errMsg);
+            error.append(errMsg);
             return false;
         }
-        
-                
-
-        if (conf.getDuration() != null && conf.getDuration() != -1 && applied >= conf.getDuration()) {
-            log.info("! AssignId {}: Limit reached.", dto.getAssignId());
-            return false;
-        }
-
         return true;
     }
 
     /**
      * Checks if the customer's price group is excluded or restricted from the discount.
      */
-    private boolean isPriceGroupExcluded(DynDiscAssignDTO dto) {
-
-        // advanced price group rules
+    private boolean isPriceGroupExcluded(DynDiscAssignDTO dto, StringBuilder error) {
         List<DynDiscPriceGroup> groups = cfg.getDynDiscPriceGroupMap().values().stream()
             .filter(pg -> pg.getId().getDiscId().equals(dto.getDiscId().intValue()))
-            .filter(pg -> pg.isRestrictInd() != pg.isProhibitInd()) // Filter out invalid entries
+            .filter(pg -> pg.isRestrictInd() != pg.isProhibitInd())
             .collect(Collectors.toList());
 
         if (groups.isEmpty()) {
-            return false; // No specific price group rules apply, so not excluded by this logic
+            return false;
         }
 
         Set<String> restricted = groups.stream()
             .filter(DynDiscPriceGroup::isRestrictInd)
             .map(pg -> pg.getId().getPrgcode())
             .collect(Collectors.toSet());
-
         if (!restricted.isEmpty() && !restricted.contains(dto.getPrgcode())) {
-            log.info("! AssignId {}: Discount restricted - Customer price group '{}' not allowed.",
-                     dto.getAssignId(), dto.getPrgcode());
-            return true; // Excluded by restriction
+            String errMsg = String.format(
+                "! AssignId %s: Discount restricted - Customer price group '%s' not allowed.",
+                dto.getAssignId(), dto.getPrgcode());
+            log.info(errMsg);
+            error.append(errMsg);
+            return true;
         }
 
         Set<String> prohibited = groups.stream()
             .filter(DynDiscPriceGroup::isProhibitInd)
             .map(pg -> pg.getId().getPrgcode())
             .collect(Collectors.toSet());
-
         if (!prohibited.isEmpty() && prohibited.contains(dto.getPrgcode())) {
-            log.info("! AssignId {}: Discount prohibited - Customer price group '{}' is excluded.",
-                     dto.getAssignId(), dto.getPrgcode());
-            return true; // Excluded by prohibition
+            String errMsg = String.format(
+                "! AssignId %s: Discount prohibited - Customer price group '%s' is excluded.",
+                dto.getAssignId(), dto.getPrgcode());
+            log.info(errMsg);
+            error.append(errMsg);
+            return true;
         }
-
-        return false; // Not explicitly excluded by price group rules
+        return false;
     }
 
     /**
      * Checks if the discount offer is eligible based on TMCode and SNCode matching.
      */
-    private boolean isOfferEligible(DynDiscAssignDTO dto) {
+    private boolean isOfferEligible(DynDiscAssignDTO dto, StringBuilder error) {
+        LocalDateTime assignDate = dto.getAssignDate().toInstant()
+            .atZone(ZoneId.systemDefault())
+            .toLocalDateTime();
+
         List<DynDiscOffer> offers = cfg.getDynDiscOfferMap()
-            .getOrDefault(dto.getDiscId().intValue(), emptyList());
+            .getOrDefault(dto.getDiscId().intValue(), Collections.emptyList());
 
-        boolean match = offers.stream().anyMatch(o ->
-            (o.getTmcode().equals(dto.getTmCode()) && o.getSncode().equals(dto.getOfferSnCode().intValue())) || // Exact match
-            (o.getTmcode() == -1 && o.getSncode().equals(dto.getOfferSnCode().intValue())) || // SNCode match with TMCode = -1
-            (o.getSncode() == -1 && o.getTmcode().equals(dto.getTmCode())) || // TMCode match with SNCode = -1
-            (o.getTmcode() == -1 && o.getSncode() == -1) // Global catch-all
-        );
+        for (DynDiscOffer offer : offers) {
+            boolean isTmSnMatched =
+                (offer.getTmcode().equals(dto.getTmCode()) && offer.getSncode().equals(dto.getOfferSnCode().intValue()))
+                || (offer.getTmcode() == -1 && offer.getSncode().equals(dto.getOfferSnCode().intValue()))
+                || (offer.getSncode() == -1 && offer.getTmcode().equals(dto.getTmCode()))
+                || (offer.getTmcode() == -1 && offer.getSncode() == -1);
 
-        if (!match) {
-            log.warn("! AssignId {}: TM/SN ({}/{}) not eligible for DiscId {}.", dto.getAssignId(),
-                     dto.getTmCode(), dto.getOfferSnCode(), dto.getDiscId());
+            if (isTmSnMatched) {
+                boolean isDateEligible =
+                    (offer.getEligStartDate() == null || !assignDate.isBefore(offer.getEligStartDate())) &&
+                    (offer.getEligEndDate() == null || !assignDate.isAfter(offer.getEligEndDate()));
+
+                if (isDateEligible) {
+                    return true;
+                }
+            }
         }
 
-        return match;
+        String errMsg = String.format(
+            "! AssignId %s: TM/SN (%s/%s) with AssignDate %s not eligible for DiscId %s.",
+            dto.getAssignId(), dto.getTmCode(), dto.getOfferSnCode(), dto.getAssignDate(), dto.getDiscId());
+        log.warn(errMsg);
+        error.append(errMsg);
+        return false;
     }
 
     /**
      * Checks if the offer status (e.g., Suspended, On Hold) permits the discount application.
      */
-    private boolean isOfferStatusPermitted(DynDiscAssignDTO dto) {
+    private boolean isOfferStatusPermitted(DynDiscAssignDTO dto, StringBuilder error) {
         DynDiscConf conf = cfg.getDynDiscConfMap().get(dto.getDiscId().intValue());
-
         if ("S".equals(String.valueOf(dto.getOfferStatus())) && !conf.getSuspInd()) {
-            log.info("! AssignId {}: Discount not allowed - Offer Suspended. SNCode: {}", dto.getAssignId(), dto.getOfferSnCode());
+            String errMsg = String.format(
+                "! AssignId %s: Discount not allowed - Offer Suspended. SNCode: %s",
+                dto.getAssignId(), dto.getOfferSnCode());
+            log.info(errMsg);
+            error.append(errMsg);
             return false;
         }
 
         if ("O".equals(String.valueOf(dto.getOfferStatus()))) {
-            log.info("! AssignId {}: Discount not allowed - Offer On Hold. SNCode: {}", dto.getAssignId(), dto.getOfferSnCode());
+            String errMsg = String.format(
+                "! AssignId %s: Discount not allowed - Offer On Hold. SNCode: %s",
+                dto.getAssignId(), dto.getOfferSnCode());
+            log.info(errMsg);
+            error.append(errMsg);
             return false;
         }
-
         return true;
     }
-
 }

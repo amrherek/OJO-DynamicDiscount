@@ -1,6 +1,8 @@
 
 package com.atos.dynamicdiscount.processor.service.evaluation;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -108,6 +110,12 @@ public class DiscountCalculator {
 
     
     private Optional<DynDiscOffer> findOffer(DynDiscAssignDTO dto) {
+    	
+        // Convert dto.getAssignDate (java.util.Date) to LocalDateTime
+        LocalDateTime assignDate = dto.getAssignDate().toInstant()
+            .atZone(ZoneId.systemDefault())
+            .toLocalDateTime();
+    	
         List<DynDiscOffer> offers = cfg.getDynDiscOfferMap()
             .getOrDefault(dto.getDiscId().intValue(), List.of());
 
@@ -115,7 +123,17 @@ public class DiscountCalculator {
         int bestPriority = Integer.MAX_VALUE;
 
         for (DynDiscOffer o : offers) {
+        	
+            // Skip offers that do not satisfy the date eligibility
+        	// eligible dates -->  assignDate >= EligStartDate && assignDate <=EligEndDate.
+            if ((o.getEligStartDate() != null && assignDate.isBefore(o.getEligStartDate())) || 
+                (o.getEligEndDate() != null && assignDate.isAfter(o.getEligEndDate()))) {
+                continue;
+            }
+            
+            	
             int priority;
+            
             if (o.getTmcode().equals(dto.getTmCode()) && o.getSncode().equals(dto.getOfferSnCode().intValue())) {
                 priority = 1; // Exact match
             } else if (o.getTmcode() == -1 && o.getSncode().equals(dto.getOfferSnCode().intValue())) {
@@ -128,6 +146,7 @@ public class DiscountCalculator {
                 continue; // Skip irrelevant offers
             }
 
+            // Update the best match if this offer has a higher priority
             if (priority < bestPriority) {
                 bestPriority = priority;
                 bestMatch = o;

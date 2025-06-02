@@ -57,8 +57,8 @@ public interface DynDiscAssignRepository extends JpaRepository<DynDiscAssign, Lo
 			  ),
 			
 			  /*--------------------------------------------
-			   2) Latest Active/Suspended Offer History
-			      - Join to status history and offers catalog
+			   2) Latest Offer History
+			      - Join to valid dyn_disc_Assigns and pre_serv_Status_hist for MCD WAN offers
 			      - Pick the most recent row per (assign_id, sncode)
 			  --------------------------------------------*/
 			  offer_history_ranked AS (
@@ -121,7 +121,6 @@ public interface DynDiscAssignRepository extends JpaRepository<DynDiscAssign, Lo
 			      sc.dependent_sncode AS alo_sncode
 			    FROM srv_service_consistency sc
 			    WHERE sc.dependency_type = 'N'
-				and sc.sncode<>10045
 			      AND EXISTS (
 			        SELECT 1
 			        FROM mpusntab mp

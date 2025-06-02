@@ -49,24 +49,30 @@ public class DiscountLogService {
 		
 		
 		if (grant != null) {
-		    boolean offerOccFailed = Boolean.FALSE.equals(grant.getOfferOccCreated()) && grant.getOfferDiscAmount() != 0;
-		    boolean aloOccFailed = Boolean.FALSE.equals(grant.getAloOccCreated()) && grant.getAloDiscAmount() != 0;
+			boolean offerOccFailed = Boolean.FALSE.equals(grant.getOfferOccCreated())
+					&& grant.getOfferDiscAmount() != 0;
+			boolean aloOccFailed = Boolean.FALSE.equals(grant.getAloOccCreated()) && grant.getAloDiscAmount() != 0;
+			contract.setStatus((offerOccFailed || aloOccFailed) ? "F" : "P");
+			String remark;
+			if (contract.getStatus().equals("P")) {
+				boolean offerOccGranted = Boolean.TRUE.equals(grant.getOfferOccCreated());
+				boolean aloOccGranted = Boolean.TRUE.equals(grant.getAloOccCreated());
+				String grantedDetails = (offerOccGranted && aloOccGranted) ? "both Offer and ALO OCCs granted"
+						: offerOccGranted ? "Offer OCC granted" : aloOccGranted ? "ALO OCC granted" : "no OCC granted";
+				remark = "AssignId=" + grant.getAssignId() + ": Successfully applied (" + grantedDetails + ").";
+			} else {
+				remark = "AssignId=" + grant.getAssignId() + ": Failed due to: "
+						+ (offerOccFailed ? "Offer OCC creation failure" : "")
+						+ (offerOccFailed && aloOccFailed ? " and " : "")
+						+ (aloOccFailed ? "ALO OCC creation failure" : "") + ".";
+			}
 
-		    contract.setStatus((offerOccFailed || aloOccFailed) ? "F" : "P");
-
-		    String remark = "AssignId=" + grant.getAssignId() + ": " + 
-		                    (contract.getStatus().equals("P") ? 
-		                     "Successfully applied." : 
-		                     "Failed due to: " + 
-		                     (offerOccFailed ? "Offer OCC creation failure" : "") +
-		                     (offerOccFailed && aloOccFailed ? " and " : "") +
-		                     (aloOccFailed ? "ALO OCC creation failure" : "") + ".");
-		    contract.setRemark(remark);
+			contract.setRemark(remark);
 		}
+
 		else {
 			log.debug("DynDiscGrantHistory missing; No grant recorded");
 		}
-
 		
 		contractRepo.save(contract);
 		log.debug("DynDiscContract [{}] saved.", contract.getCoId());
@@ -83,6 +89,8 @@ public class DiscountLogService {
 			log.debug("DynDiscGrantHistory [{}] saved.", grant.getAssignId());
 
 	  // 4. Update DYN_DISC_ASSIGN
+			/* start comment
+		
 			try {
 				DynDiscAssign assign = assignRepo.findById(grant.getAssignId())
 						.orElseThrow(() -> new EntityNotFoundException("Assign not found: " + grant.getAssignId()));
@@ -96,6 +104,7 @@ public class DiscountLogService {
 			} catch (EntityNotFoundException e) {
 				log.error("Error updating DynDiscAssign: {}", e.getMessage());
 			}
+			end comment for testing */
 		}
 
 		// 5. Grant Confirmation Log
