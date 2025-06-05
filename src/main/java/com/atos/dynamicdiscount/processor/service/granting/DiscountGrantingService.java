@@ -66,7 +66,7 @@ public class DiscountGrantingService {
 					//	validFrom, amount * -1 , remark, glcode, sncode, tmcode, validFrom);
 				
 				
-				jdbcTemplate.update("CALL insert_promo_results(?, ?, ?, ?, ?, ?, ?, ?, ?)", customerId, coId,
+				jdbcTemplate.update("CALL grant_promo_Result (?, ?, ?, ?, ?, ?, ?, ?, ?,?)",eval.getRequestId(), customerId, coId,
 						validFrom, amount*-1, remark, glcode, sncode, tmcode, validFrom);
 				
 				

@@ -47,8 +47,8 @@ public class GmdRequestService {
 				return;
 			}
 
-			//Long maxGmdRequest = gmdRequestHistoryRepository.findMaxRequest();
-			 Long maxGmdRequest = 296562677l;
+			Long maxGmdRequest = gmdRequestHistoryRepository.findMaxRequest();
+			// Long maxGmdRequest = 296562677l;
 			if (maxGmdRequest == null) {
 				log.error(" Last processed request by GMD could not be found. Aborting job processing.");
 				log.error(" Job processing has been aborted.");
@@ -77,8 +77,7 @@ public class GmdRequestService {
 		log.info(" Initializing job with process ID: {}", processId);
 
 		try {
-			// Step 1: Check if there's an existing process. Use Optional for a more robust
-			// way to handle
+			// Step 1: Check if there's an existing process. 
 			Optional<Long> existingProcessId = dynDiscProcessRepository.findActiveProcessId();
 
 			if (existingProcessId.isPresent()) {
@@ -109,6 +108,18 @@ public class GmdRequestService {
 	private void processRequests(Long start, Long end) {
 		log.info(" Processing requests from {} to {}.", start, end);
 		try {
+			
+			//Very important for tracking and fixing mismatch types
+			/*
+			List<Object[]>  requests = gmdRequestHistoryRepository.findRequestsInRange(start, end);
+			for (Object[] row : requests) {
+			    for (Object col : row) {
+			        System.out.println(col + " (" + col.getClass().getName() + ")");
+			    }
+			}
+			*/
+			
+			
 			List<GmdRequestHistoryDTO> requests = gmdRequestHistoryRepository.findRequestsInRange(start, end);
 			log.info(" Fetched {} requests for processing.", requests.size());
 
@@ -122,6 +133,7 @@ public class GmdRequestService {
 				}
 			}
 			log.info(" Requests processing completed.");
+			
 
 		} catch (Exception e) {
 			log.error(" Error fetching or processing requests: ", e);

@@ -130,7 +130,7 @@ public class ExecutionManager {
                 return;
 
             case "F":
-                log.info("Resuming failed request ID: {}", requestId);
+            	log.info("Resuming request ID: {}, current status is 'F'", requestId);
                 requestService.resetFailedContracts(requestId);
 
                 List<DynDiscContract> resumeContracts = requestService.getContractsByStatus(requestId, "I");

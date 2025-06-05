@@ -1,7 +1,7 @@
 package com.atos.dynamicdiscount.model.dto;
 
 import java.math.BigDecimal;
-import java.util.Date;
+import java.sql.Timestamp;
 
 import jakarta.persistence.Id;
 import lombok.AllArgsConstructor;
@@ -17,7 +17,7 @@ public class GmdRequestHistoryDTO {
 	private BigDecimal customerId;
 	private BigDecimal coId;
 	private BigDecimal actionId;
-	private BigDecimal discId;
-	private BigDecimal discSncode;
-	private Date validFromDate;
+	private Integer discId;
+	private Integer discSncode;
+	private Timestamp validFromDate;
 }

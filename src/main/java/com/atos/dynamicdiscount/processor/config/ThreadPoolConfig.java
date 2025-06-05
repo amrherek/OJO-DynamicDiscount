@@ -10,7 +10,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 @EnableAsync
 public class ThreadPoolConfig {
 
-	@Value("${threadpool.corePoolSize:2")
+	@Value("${threadpool.corePoolSize:2}")
 	private int corePoolSize;
 
 	@Value("${threadpool.maxPoolSize:2}")

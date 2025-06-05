@@ -73,7 +73,7 @@ public class GmdActionHandler {
 	@Transactional
 	private void updateDiscountInstanceStatus(GmdRequestHistoryDTO request, String status) {
 		Optional<DynDiscAssign> dynDiscAssign = dynDiscAssignRepository.findLatestAssign(request.getCoId().intValue(),
-				request.getDiscSncode().intValue());
+				request.getDiscSncode());
 		if (dynDiscAssign.isPresent()) {
 			try {
 				DynDiscAssign assign = dynDiscAssign.get();

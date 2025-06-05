@@ -1,6 +1,7 @@
 package com.atos.dynamicdiscount.listener.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -11,11 +12,14 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 @Slf4j
 public class ListenerJobScheduler {
+	
+    @Value("${job.scheduler.fixedRate:300000}") // Default to 5 minutes
+    private long fixedRate;
 
 	@Autowired
 	private GmdRequestService requestProcessingService;
 
-	@Scheduled(fixedRate = 300000) // Every 5 minutes
+    @Scheduled(fixedRateString = "#{T(java.lang.Long).parseLong('${job.scheduler.fixedRate:300000}')}")
 	public void runListenerJob() {
 		try {
 			requestProcessingService.processJob();

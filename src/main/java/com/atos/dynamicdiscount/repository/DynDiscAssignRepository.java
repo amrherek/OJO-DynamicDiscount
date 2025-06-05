@@ -15,7 +15,7 @@ import com.atos.dynamicdiscount.model.entity.DynDiscAssign;
 @Repository
 public interface DynDiscAssignRepository extends JpaRepository<DynDiscAssign, Long> {
 
-	@Query(value = "SELECT * FROM dyn_disc_assign WHERE assign_id = (SELECT MAX(assign_id) FROM dyn_disc_assign WHERE co_id = :coId AND disc_sncode = :discSncode)", nativeQuery = true)
+	@Query(value = "SELECT * FROM dyn_disc_assign WHERE assign_id = (SELECT MAX(assign_id) FROM dyn_disc_assign WHERE DELETE_DATE is NULL and co_id = :coId AND disc_sncode = :discSncode)", nativeQuery = true)
 	Optional<DynDiscAssign> findLatestAssign(@Param("coId") Integer coId, @Param("discSncode") Integer discSncode);
 	
 	
@@ -161,7 +161,10 @@ public interface DynDiscAssignRepository extends JpaRepository<DynDiscAssign, Lo
 			  ),
 			
 			  /*--------------------------------------------
-			   6) Combine Offer + ALO per Assignment
+			   6) va_with_offer_and_alo
+			   Combine the valid discount assignment (assignId) with service details (SNCODE,STATUS,HISTNO,VALID_FROM) of both:
+					a- the latest active or suspended MCD WAN offer  
+					b- its most recently associated ALO Service (if applicable).
 			  --------------------------------------------*/
 			  alo_ranked AS (
 			    SELECT
@@ -187,9 +190,10 @@ public interface DynDiscAssignRepository extends JpaRepository<DynDiscAssign, Lo
 			  ),
 			
 			  /*--------------------------------------------
-			   7) Attach Offer Pricing
-			      - Use override fee if in override period
-			      - Otherwise use latest tm.accessfee as of targetDate
+			   7) va_with_offer_fee
+			   va_with_offer_fee is an enriched version of va_with_offer_and_alo, including the offer price  either from:
+				1- the standard price in mpulktmb 
+				2- or the overridden amount in profile_Service.
 			  --------------------------------------------*/
 			  va_with_offer_fee AS (
 			    SELECT
@@ -226,10 +230,12 @@ public interface DynDiscAssignRepository extends JpaRepository<DynDiscAssign, Lo
 			  ),
 			
 			  /*--------------------------------------------
-			   8) Attach ALO Pricing
-			      - Same override logic for ALO services
+			   8) va_offer_alo_full_view
+					va_offer_alo_full_view is an enriched version of va_with_offer_fee, including the alo price  either from:
+					1- the standard price in mpulktmb 
+					2- or the overridden amount in profile_Service.
 			  --------------------------------------------*/
-			  va_with_alo_fee AS (
+			  va_offer_alo_full_view AS (
 			    SELECT
 			      x.*,
 			      CASE
@@ -278,18 +284,12 @@ public interface DynDiscAssignRepository extends JpaRepository<DynDiscAssign, Lo
 			  va.offer_sncode       AS offer_sncode,
 			  va.offer_valid_from_date AS offervalidfromdate,
 			  va.offer_status       AS offerstatus,
-			  vof.offer_price       AS offerprice,
+			  va.offer_price       AS offerprice,
 			  va.alo_sncode         AS alosncode,
 			  va.alo_valid_from_date   AS alovalidfromdate,
 			  va.alo_status         AS alostatus,
-			  vaf.alo_price         AS aloprice
-			FROM va_with_alo_fee vaf
-			JOIN va_with_offer_fee vof
-			  ON vof.assign_id = vaf.assign_id
-			 AND vof.co_id     = vaf.co_id
-			JOIN va_with_offer_and_alo va
-			  ON va.assign_id = vaf.assign_id
-			 AND va.co_id     = vaf.co_id
+			  va.alo_price         AS aloprice
+			FROM va_offer_alo_full_view 
 			ORDER BY va.assign_id
 			""")
 	List<DynDiscAssignDTO> fetchAssignedDiscounts(@Param("coIds") List<Integer> coIds, Integer requestId, @Param("targetDate") LocalDateTime targetDate);	
