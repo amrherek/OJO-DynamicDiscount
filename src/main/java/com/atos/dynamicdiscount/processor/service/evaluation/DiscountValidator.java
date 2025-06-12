@@ -2,6 +2,7 @@ package com.atos.dynamicdiscount.processor.service.evaluation;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -60,7 +61,7 @@ public class DiscountValidator {
         if ((conf.getValidTo() != null && !conf.getValidTo().isAfter(cutoffDate))
                 || (conf.getValidFrom() != null && !conf.getValidFrom().isBefore(cutoffDate))) {
             String errMsg = String.format(
-                "! AssignId %s: Not valid for cutoffDate %s (ValidFrom: %s, ValidTo: %s).",
+                "AssignId %s: Discount expired, not valid for the cutoff date %s (Valid From: %s, Valid To: %s).",
                 dto.getAssignId(), cutoffDate, conf.getValidFrom(), conf.getValidTo());
             log.info(errMsg);
             error.append(errMsg);
@@ -96,15 +97,26 @@ public class DiscountValidator {
             .filter(DynDiscPriceGroup::isRestrictInd)
             .map(pg -> pg.getId().getPrgcode())
             .collect(Collectors.toSet());
-        if (!restricted.isEmpty() && !restricted.contains(dto.getPrgcode())) {
-            String errMsg = String.format(
-                "! AssignId %s: Discount restricted - Customer price group '%s' not allowed.",
-                dto.getAssignId(), dto.getPrgcode());
-            log.info(errMsg);
-            error.append(errMsg);
-            return true;
+        
+        
+        
+     // Check restricted list first
+        if (!restricted.isEmpty()) {
+            if (!restricted.contains(dto.getPrgcode())) {
+                String errMsg = String.format(
+                    "! AssignId %s: Discount restricted - Customer price group '%s' not allowed.",
+                    dto.getAssignId(), dto.getPrgcode());
+                log.info(errMsg);
+                error.append(errMsg);
+                return true;
+            }
+            // If restricted list is not empty and we get here, 
+            // it means the prgcode is in restricted list (allowed)
+            return false;
         }
-
+        
+        
+        // ONLY check prohibited list if restricted list is empty
         Set<String> prohibited = groups.stream()
             .filter(DynDiscPriceGroup::isProhibitInd)
             .map(pg -> pg.getId().getPrgcode())
@@ -119,11 +131,21 @@ public class DiscountValidator {
         }
         return false;
     }
-
+        
+        
+        
+        
+       
     /**
      * Checks if the discount offer is eligible based on TMCode and SNCode matching.
      */
     private boolean isOfferEligible(DynDiscAssignDTO dto, StringBuilder error) {
+    	
+    	
+    	// Create formatter for "YYYYMMDDHH24MISS" pattern
+    	DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    	
         LocalDateTime assignDate = dto.getAssignDate().toInstant()
             .atZone(ZoneId.systemDefault())
             .toLocalDateTime();
@@ -150,8 +172,8 @@ public class DiscountValidator {
         }
 
         String errMsg = String.format(
-            "! AssignId %s: TM/SN (%s/%s) with AssignDate %s not eligible for DiscId %s.",
-            dto.getAssignId(), dto.getTmCode(), dto.getOfferSnCode(), dto.getAssignDate(), dto.getDiscId());
+            "! AssignId %s: TM/SN (%s/%s) with AssignDate (%s) not eligible for DiscId %s.",
+            dto.getAssignId(), dto.getTmCode(), dto.getOfferSnCode(), assignDate.format(formatter), dto.getDiscId());
         log.warn(errMsg);
         error.append(errMsg);
         return false;

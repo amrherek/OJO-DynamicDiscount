@@ -1,22 +1,14 @@
 package com.atos.dynamicdiscount.processor.service.request;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
-import java.util.Set;
 
 import org.springframework.stereotype.Service;
 
-import com.atos.dynamicdiscount.exceptions.MultipleOngoingRequestsException;
-import com.atos.dynamicdiscount.model.dto.DynDiscContractDTO;
 import com.atos.dynamicdiscount.model.dto.NewRequestResultDTO;
 import com.atos.dynamicdiscount.model.entity.DynDiscContract;
 import com.atos.dynamicdiscount.model.entity.DynDiscRequest;
 import com.atos.dynamicdiscount.model.entity.DynDiscStatistic;
-import com.atos.dynamicdiscount.processor.config.DynDiscConfigurations;
 import com.atos.dynamicdiscount.repository.DynDiscContractRepository;
 import com.atos.dynamicdiscount.repository.DynDiscRequestRepository;
 import com.atos.dynamicdiscount.repository.DynDiscStatisticRepository;
@@ -39,38 +31,44 @@ public class DiscountRequestService {
     private final DynDiscRequestRepository requestRepo;
     private final DynDiscContractRepository contractRepo;
     private final DynDiscStatisticRepository statisticRepo;
-    private final DynDiscConfigurations configurations;
+    
 
     @PersistenceContext
     private EntityManager entityManager;
+    
 
-
-   
+    
+       
     /** Registers a new discount request and processes eligible contracts. */
-    public NewRequestResultDTO registerNewRequest(String billCycle, LocalDateTime cutoffDate) {
-        configurations.refreshConfigurations();
-        log.info("Fetching eligible contracts for bill cycle '{}' and cutoff date '{}'.", billCycle, cutoffDate);
-        List<DynDiscContractDTO> eligibleContracts = fetchEligibleContracts(billCycle, cutoffDate);
+    @Transactional
+    public DynDiscRequest registerNewRequest(String billCycle, LocalDateTime cutoffDate) {
+        log.info("Persisting eligible contracts for bill cycle '{}' and cutoff date '{}'.", billCycle, cutoffDate);
 
-        if (eligibleContracts.isEmpty()) {
+        int insertedRows = persistEligibleContracts(billCycle, cutoffDate);
+        if (insertedRows == 0) {
             log.warn("No eligible contracts were found for bill cycle '{}' and cutoff date '{}'.", billCycle, cutoffDate);
             return null;
         }
+        log.info("Found {} eligible contracts for bill cycle '{}' and cutoff date '{}'.", insertedRows, billCycle, cutoffDate);
 
         DynDiscRequest newRequest = createNewRequest(billCycle, cutoffDate);
-        List<DynDiscContract> discountContracts = mapToDynDiscContracts(eligibleContracts, newRequest);
-        saveRequestAndDiscountContracts(newRequest, discountContracts);
-        return new NewRequestResultDTO(newRequest, discountContracts);
+        saveRequestAndDiscountContracts(newRequest);
+        return newRequest;
     }
+    
+    
 
-    /** Fetches eligible contracts for the given bill cycle and cutoff date. */
-    private List<DynDiscContractDTO> fetchEligibleContracts(String billCycle, LocalDateTime cutoffDate) {
-        List<DynDiscContractDTO> eligibleContracts = contractRepo.fetchEligibleContracts(cutoffDate, billCycle);
-        log.info("Retrieved {} eligible contracts for bill cycle '{}' and cutoff date '{}'.", eligibleContracts.size(),
-                billCycle, cutoffDate);
-        return eligibleContracts;
-    }
-
+	/** Persists eligible contracts into a temporary table and returns the number of rows inserted. */
+	private int persistEligibleContracts(String billCycle, LocalDateTime cutoffDate) {
+	    contractRepo.truncateTempTable();
+	    log.info("Temporary table truncated before persisting eligible contract");
+	    
+	    int insertedRows = contractRepo.persistEligibleContractsToTempTable( cutoffDate,billCycle);
+	    log.info("Persisted {} eligible contracts into the temporary table for bill cycle '{}' and cutoff date '{}'.",
+	            insertedRows, billCycle, cutoffDate);
+	    return insertedRows;
+	}
+	
     /** Creates a new discount request. */
     private DynDiscRequest createNewRequest(String billCycle, LocalDateTime cutoffDate) {
         DynDiscRequest request = new DynDiscRequest();
@@ -82,48 +80,23 @@ public class DiscountRequestService {
         log.info("New discount request created with ID '{}'.", nextRequestId);
         return request;
     }
+	
+	/** Inserts the request and moves contracts from the temporary table to the final table. */
+	public void saveRequestAndDiscountContracts(DynDiscRequest request) {
+	    log.info("Starting transaction for request ID '{}'.", request.getRequestId());
+	    requestRepo.save(request);
+	    log.info("Saved request ID '{}'.", request.getRequestId());
 
-    /** Maps eligible contracts to discount contract entities. */
-    private List<DynDiscContract> mapToDynDiscContracts(List<DynDiscContractDTO> eligibleContracts,
-                                                        DynDiscRequest newRequest) {
-        List<DynDiscContract> dynDiscContracts = new ArrayList<>();
-        Set<BigDecimal> processedCoIds = new HashSet<>();
+	    int updatedRows = contractRepo.insertContractsFromTempTable(request.getRequestId());
+	    log.info("Inserted {} contracts into the final table for request ID '{}'.", updatedRows, request.getRequestId());
 
-        for (DynDiscContractDTO eligibleContract : eligibleContracts) {
-            BigDecimal coId = eligibleContract.getCoId();
-            if (processedCoIds.add(coId)) {
-                DynDiscContract dynDisContract = new DynDiscContract();
-                dynDisContract.setRequestId(newRequest.getRequestId().intValue());
-                dynDisContract.setCustomerId(eligibleContract.getCustomerId().intValue());
-                dynDisContract.setCoId(coId.intValue());
-                dynDisContract.setLbcDate(eligibleContract.getLbcDate());
-                dynDisContract.setPrgcode(eligibleContract.getPrgcode());
-                dynDisContract.setTmcode(eligibleContract.getTmcode().intValue());
-                dynDisContract.setStatus("I");
+	    contractRepo.truncateTempTable();
+	    log.info("Temporary table truncated after processing request ID '{}'.", request.getRequestId());
+	}
+	
 
-                dynDiscContracts.add(dynDisContract);
-                log.debug("Mapped eligible contract with CO ID '{}' to DynDiscContract for request ID '{}'.", coId,
-                        newRequest.getRequestId());
-            } else {
-                log.debug("Skipping eligible contract with CO ID '{}' as it has already been processed for request ID '{}'.",
-                        coId, newRequest.getRequestId());
-            }
-        }
-        log.debug("Mapped {} eligible contracts to {} discount contracts for request ID '{}'.",
-                eligibleContracts.size(), dynDiscContracts.size(), newRequest.getRequestId());
-        return dynDiscContracts;
-    }
 
-    /** Saves the request and its associated discount contracts. */
-    @Transactional
-    private void saveRequestAndDiscountContracts(DynDiscRequest request, List<DynDiscContract> discountContracts) {
-        requestRepo.save(request);
-        contractRepo.saveAll(discountContracts);
-        log.info("Successfully saved discount request ID '{}' and {} associated contracts.", request.getRequestId(),
-                discountContracts.size());
-    }
-
-    /** Finalizes the discount request by updating its status and associated statistics. */
+	/** Finalizes the discount request by updating its status and associated statistics. */
     @Transactional
     public void finalizeRequest(Integer requestId) {
         LocalDateTime statusDate = LocalDateTime.now();
@@ -149,9 +122,10 @@ public class DiscountRequestService {
 
     /** Resets failed contracts for the given request. */
     @Transactional
-    public void resetFailedContracts(Integer requestId) {
+    public int resetFailedContracts(Integer requestId) {
         int updated = contractRepo.resetFailedContracts(requestId);
         log.info("-> Reset {} failed contracts to 'I' for request {}", updated, requestId);
+        return updated;
     }
 
     /** Retrieves contracts by status for a specific request. */

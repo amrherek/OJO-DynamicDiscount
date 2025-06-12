@@ -157,21 +157,6 @@ public class DiscountCalculator {
     }
 
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
 
     private boolean capAndLog(String label, float value, float max) {
         if (value > max) {
@@ -181,7 +166,4 @@ public class DiscountCalculator {
         return false;
     }
 
-    private float firstNonZero(Float primary, Float fallback) {
-        return (primary != null && primary != 0f) ? primary : fallback;
-    }
 }

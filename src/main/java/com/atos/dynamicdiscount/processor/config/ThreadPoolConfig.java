@@ -5,27 +5,26 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 @Configuration
 @EnableAsync
+@EnableTransactionManagement
 public class ThreadPoolConfig {
 
-	@Value("${threadpool.corePoolSize:2}")
+	@Value("${threadpool.corePoolSize}")
 	private int corePoolSize;
 
-	@Value("${threadpool.maxPoolSize:2}")
+	@Value("${threadpool.maxPoolSize}")
 	private int maxPoolSize;
 
-	@Value("${threadpool.queueCapacity:50}")
+	@Value("${threadpool.queueCapacity}")
 	private int queueCapacity;
 
 	@Bean
 	public ThreadPoolTaskExecutor taskExecutor() {
 		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 		// executor.setCorePoolSize(Runtime.getRuntime().availableProcessors()); //
-		// Default: Number of CPU cores --// Minimum number of threads to keep in the
-		// pool
-		// executor.setMaxPoolSize(20); // Maximum number of threads
 		executor.setCorePoolSize(corePoolSize); // Minimum number of threads to keep in the pool
 		executor.setMaxPoolSize(maxPoolSize); // Maximum number of threads
 		executor.setQueueCapacity(queueCapacity); // Capacity of the queue before new tasks get rejected

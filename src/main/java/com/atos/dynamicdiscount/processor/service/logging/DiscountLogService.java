@@ -89,7 +89,7 @@ public class DiscountLogService {
 			log.debug("DynDiscGrantHistory [{}] saved.", grant.getAssignId());
 
 	  // 4. Update DYN_DISC_ASSIGN
-			/* start comment
+			// start comment
 		
 			try {
 				DynDiscAssign assign = assignRepo.findById(grant.getAssignId())
@@ -104,7 +104,7 @@ public class DiscountLogService {
 			} catch (EntityNotFoundException e) {
 				log.error("Error updating DynDiscAssign: {}", e.getMessage());
 			}
-			end comment for testing */
+			//end comment for testing */
 		}
 
 		// 5. Grant Confirmation Log

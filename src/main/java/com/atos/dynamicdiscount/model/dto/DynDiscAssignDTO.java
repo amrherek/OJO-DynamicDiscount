@@ -5,10 +5,13 @@ import java.util.Date;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
 public class DynDiscAssignDTO {
+	private Integer requestId;
 	private BigDecimal assignId;
 	private Date assignDate;
 	private BigDecimal discSncode;
@@ -22,11 +25,10 @@ public class DynDiscAssignDTO {
 	private Integer tmCode;
 	private BigDecimal offerSnCode;
 	private Date offerValidFromDate;
-	private char offerStatus;
+	private Character offerStatus;
 	private BigDecimal offerPrice;
 	private BigDecimal aloSnCode;
 	private Date aloValidFromDate;
-	private char aloStatus;
+	private Character aloStatus;
 	private BigDecimal aloPrice;
-
 }

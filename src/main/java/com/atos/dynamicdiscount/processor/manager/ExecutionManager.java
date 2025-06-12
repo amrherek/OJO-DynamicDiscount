@@ -12,6 +12,7 @@ import com.atos.dynamicdiscount.exceptions.InvalidRequestNumberException;
 import com.atos.dynamicdiscount.model.dto.NewRequestResultDTO;
 import com.atos.dynamicdiscount.model.entity.DynDiscContract;
 import com.atos.dynamicdiscount.model.entity.DynDiscRequest;
+import com.atos.dynamicdiscount.processor.config.DynDiscConfigurations;
 import com.atos.dynamicdiscount.processor.service.billcycle.BillCycleService;
 import com.atos.dynamicdiscount.processor.service.request.DiscountRequestService;
 
@@ -30,6 +31,10 @@ public class ExecutionManager {
 
     @Autowired
     private BatchProcessor batchProcessor;
+    
+    @Autowired
+    private  DynDiscConfigurations configurations;
+
 
     @Value("${processing.batch.size:1000}")
     private int batchSize;
@@ -84,17 +89,20 @@ public class ExecutionManager {
             return;
         }
 
+        // refresh configurations
+        configurations.refreshConfigurations();
+
+        
         // Register and process the new request
-        NewRequestResultDTO result = requestService.registerNewRequest(billCycle, cutoff);
-        if (result == null) {
+        DynDiscRequest newRequest = requestService.registerNewRequest(billCycle, cutoff);
+        if (newRequest == null) {
             log.warn("! No new request generated for bill cycle: {}", billCycle);
             return;
         }
 
-        log.info("√ Processing started for new request ID: {} with {} contracts.", 
-                 result.getRequest().getRequestId(), result.getDynDiscContracts().size());
+        log.info("√ Processing started for new request ID: {}.", newRequest.getRequestId());
 
-        processRequest(result);
+        processRequest(newRequest);
     }
 
 
@@ -131,12 +139,11 @@ public class ExecutionManager {
 
             case "F":
             	log.info("Resuming request ID: {}, current status is 'F'", requestId);
-                requestService.resetFailedContracts(requestId);
+                int updated=requestService.resetFailedContracts(requestId);
 
-                List<DynDiscContract> resumeContracts = requestService.getContractsByStatus(requestId, "I");
-                if (!resumeContracts.isEmpty()) {
-                    log.info("√ Processing resumed for request ID {}. Total contracts to process: {}", requestId, resumeContracts.size());
-                    processRequest(new NewRequestResultDTO(request, resumeContracts));
+                if (updated >0) {
+                    log.info("√ Processing resumed for request ID {}. Total contracts to process: {}", requestId, updated);
+                    processRequest(request);
                     log.info("√ Successfully completed processing for request ID {}.", requestId);
                 } else {
                     log.warn("! SKIPPING processing for request ID {}: No contracts found with status 'I'.", requestId);
@@ -153,15 +160,12 @@ public class ExecutionManager {
     /**
      * Processes a request and its associated contracts in batches.
      */
-    private void processRequest(NewRequestResultDTO result) {
-        DynDiscRequest request = result.getRequest();
-        List<DynDiscContract> contracts = result.getDynDiscContracts();
-
-        log.info("Processing request ID: {} with {} contracts.", request.getRequestId(), contracts.size());
-
+    
+    private void processRequest(DynDiscRequest request) {
+   
+        log.info("Processing request ID: {}.", request.getRequestId());
         // Process contracts in batches
-        batchProcessor.processInBatches(request, contracts, batchSize);
-
+        batchProcessor.processInBatches(request, batchSize);
         // Finalize the request
         requestService.finalizeRequest(request.getRequestId());
         log.info("Completed discount processing for request ID: {}", request.getRequestId());

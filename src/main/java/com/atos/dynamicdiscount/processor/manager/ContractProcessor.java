@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
@@ -69,5 +70,14 @@ public class ContractProcessor {
 				log.error("✗ Error processing coId={}", coId, ex);
 			}
 		}, executor);
+	}
+	
+	
+	@Scheduled(fixedRate = 300000) // Adjust interval as needed
+	public void logThreadPoolStatus() {
+	    log.info("Thread pool: Active={}, Queue Size={}, Completed Tasks={}",
+	        executor.getActiveCount(),
+	        executor.getThreadPoolExecutor().getQueue().size(),
+	        executor.getThreadPoolExecutor().getCompletedTaskCount());
 	}
 }

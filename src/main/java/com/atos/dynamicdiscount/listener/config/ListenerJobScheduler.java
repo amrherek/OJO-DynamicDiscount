@@ -13,13 +13,13 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ListenerJobScheduler {
 	
-    @Value("${job.scheduler.fixedRate:300000}") // Default to 5 minutes
+    @Value("${job.scheduler.fixedRate:3000000}") // Default to 5 minutes
     private long fixedRate;
 
 	@Autowired
 	private GmdRequestService requestProcessingService;
 
-    @Scheduled(fixedRateString = "#{T(java.lang.Long).parseLong('${job.scheduler.fixedRate:300000}')}")
+    @Scheduled(fixedRateString = "#{T(java.lang.Long).parseLong('${job.scheduler.fixedRate:3000000}')}")
 	public void runListenerJob() {
 		try {
 			requestProcessingService.processJob();

@@ -19,7 +19,7 @@ public interface DynDiscRequestRepository extends JpaRepository<DynDiscRequest, 
 	int countRequestsByStatus(@Param("status") String status);
 
 	// Method to get the next available request_id
-	@Query(value = "SELECT NVL(MAX(request_id), 0) + 1 FROM DYN_DISC_REQUEST", nativeQuery = true)
+	@Query(value = "SELECT REQUEST_ID_SEQUENCE.NEXTVAL FROM DUAL", nativeQuery = true)
 	Integer getNextAvailableRequestId();
 
 	@Modifying
