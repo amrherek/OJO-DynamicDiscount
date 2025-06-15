@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class DynDiscContractId implements Serializable {
 	private Integer requestId;
+	private Integer packId;
 	private Integer customerId;
 	private Integer coId;
 

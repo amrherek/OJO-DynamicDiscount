@@ -24,6 +24,10 @@ public class DynDiscContract {
 	@Id
 	@Column(name = "request_id")
 	private Integer requestId;
+	
+	@Id
+    @Column(name = "pack_id", nullable = false)
+    private Integer packId;
 
 	@Id
 	@Column(name = "customer_id")

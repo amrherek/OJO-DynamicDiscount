@@ -9,16 +9,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import com.atos.dynamicdiscount.model.dto.DynDiscAssignDTO;
 import com.atos.dynamicdiscount.model.entity.DynDiscContract;
 import com.atos.dynamicdiscount.model.entity.DynDiscContractId;
+
+import jakarta.transaction.Transactional;
 
 @Repository
 public interface DynDiscContractRepository extends JpaRepository<DynDiscContract, DynDiscContractId> {
 
-	@Modifying
 	@Query(nativeQuery = true, value = """
-		    INSERT INTO dyn_disc_contract_temp
 			WITH
 			  /*--------------------------------------------
 			   1) Fetch Valid Discount Assignments
@@ -89,73 +88,176 @@ public interface DynDiscContractRepository extends JpaRepository<DynDiscContract
 			  - Retrieve required fields 
 			--------------------------------------------*/
 			SELECT
-			  customer_id,
-			  co_id,
-			  lbc_date,
-			  prgcode,
-			  tmcode
+				COUNT(*)
 			FROM
 			  valid_assign_with_billcycle
 					""")
-	int persistEligibleContractsToTempTable(@Param("targetDate") LocalDateTime cutoffDate,
+	int countEligibleContracts(@Param("targetDate") LocalDateTime cutoffDate,
 			@Param("targetBillcycle") String targetBillcycle);
 	
 	
 	
 
-	@Query(value = """
-			SELECT COUNT(*)
-			  FROM dyn_disc_contract
-			 WHERE request_id = :requestId
-			   AND status     = :status
-			""", nativeQuery = true)
-	long countByReqIdAndStatus(@Param("requestId") Integer requestId, @Param("status") String status);
-
+	
+	
 	@Modifying
-	@Query(value = """
-			  UPDATE dyn_disc_contract
-			     SET status = 'I'
-			   WHERE request_id = :requestId
-			     AND status  in ('I', 'F')
-			""", nativeQuery = true)
-	int resetFailedContracts(@Param("requestId") Integer requestId);
+	@Query(nativeQuery = true, value = """
+	    -- Insert Contracts
+	    INSERT INTO dyn_disc_contract (customer_id, co_id, lbc_date, prgcode, tmcode, request_id, pack_id)
+	    WITH
+	      /*--------------------------------------------
+	       1) Fetch Valid Discount Assignments
+	      --------------------------------------------*/
+	      valid_assigns AS (
+	        SELECT
+	          /*+ parallel (d,4) */
+	          d.customer_id,
+	          d.co_id,
+	          cu.lbc_date,
+	          cu.prgcode,
+	          ca.tmcode
+	        FROM dyn_disc_assign d
+	        JOIN customer_all cu ON cu.customer_id = d.customer_id
+	        JOIN contract_all ca ON ca.customer_id = cu.customer_id
+	        WHERE
+	          d.assign_date < :targetDate
+			  --AND ca.co_id in (34230626)
+	          AND (d.delete_date IS NULL OR d.delete_date >= :targetDate)
+	          AND (d.expire_date IS NULL OR d.expire_date >= :targetDate)
+	          AND (d.last_applied_date IS NULL OR d.last_applied_date < :targetDate)
+	      ),
 
-	@Query(value = """
-			  SELECT *
-			    FROM dyn_disc_contract
-			   WHERE request_id = :requestId
-			     AND status = :status
-			""", nativeQuery = true)
-	List<DynDiscContract> getContractsByStatus(@Param("requestId") Integer requestId, @Param("status") String status);
+	      /*--------------------------------------------
+	       2) Fetch Latest Bill Cycle
+	      --------------------------------------------*/
+	      bc_ranked AS (
+	        SELECT
+			 /*+ parallel (b,4) */
+	          va.*,
+	          b.billcycle,
+	          ROW_NUMBER() OVER (
+	            PARTITION BY va.co_id
+	            ORDER BY b.valid_from DESC, b.seqno DESC
+	          ) AS rn_bc
+	        FROM valid_assigns va
+	        JOIN billcycle_assignment_history b ON b.customer_id = va.customer_id
+	        WHERE b.valid_from <= :targetDate
+	      ),
+
+	      /*--------------------------------------------
+	       3) Filter Assignments by Target Bill Cycle
+	      --------------------------------------------*/
+	      valid_assign_with_billcycle AS (
+	        SELECT br.*
+	        FROM bc_ranked br
+	        WHERE rn_bc = 1 AND billcycle = :targetBillcycle
+	      ),
+
+	      /*--------------------------------------------
+	       4) Assign Pack IDs
+	      --------------------------------------------*/
+	      assigned_packs AS (
+	        SELECT 
+	          v.customer_id,
+	          v.co_id,
+	          v.lbc_date,
+	          v.prgcode,
+	          v.tmcode,
+	          :requestId AS request_id,
+	          CEIL(ROW_NUMBER() OVER (ORDER BY v.tmcode,v.co_id) / :batchSize) AS pack_id
+	        FROM valid_assign_with_billcycle v
+	      )
+	    SELECT
+	      customer_id,
+	      co_id,
+	      lbc_date,
+	      prgcode,
+	      tmcode,
+	      request_id,
+	      pack_id
+	    FROM assigned_packs
+	    """)
+	int insertContracts(@Param("targetDate") LocalDateTime cutoffDate,
+	                    @Param("targetBillcycle") String targetBillcycle,
+	                    @Param("requestId") Integer requestId,
+	                    @Param("batchSize") Integer batchSize);
 
 	
-    // Insert contracts from the temp table to the final table
-    @Modifying
-    @Query(value = "INSERT INTO dyn_disc_contract (request_id, customer_id, co_id, lbc_date, prgcode, tmcode, status) " +
-                   "SELECT :requestId, customer_id, co_id, lbc_date, prgcode, tmcode, 'I' FROM dyn_disc_contract_temp", 
-           nativeQuery = true)
-    int insertContractsFromTempTable(@Param("requestId") Integer requestId);
+	
 
-    // Truncate the temp table
-    @Modifying
-    @Query(value = "TRUNCATE TABLE dyn_disc_contract_temp", nativeQuery = true)
-    void truncateTempTable();
-
-    // Fetch contracts by request ID using native SQL
+	
+	
+	 // Count contracts by request ID and status
     @Query(value = """
-    	    SELECT * 
-    	    FROM DYN_DISC_CONTRACT 
-    	    WHERE REQUEST_ID = :requestId 
-    	      AND STATUS = 'I'
-    	    ORDER BY CO_ID
-    	""", nativeQuery = true)
-    List<DynDiscContract> fetchAllUnprocessedContracts(@Param("requestId") Integer requestId);
-    
+        SELECT COUNT(*)
+        FROM dyn_disc_contract
+        WHERE request_id = :requestId AND status = :status
+    """, nativeQuery = true)
+    long countByReqIdAndStatus(Integer requestId, String status);
     
 
+    // Reset the status of failed contracts
+    @Modifying
+    @Query(value = """
+        UPDATE dyn_disc_contract
+        SET status = 'I'
+        WHERE request_id = :requestId AND status IN ('I', 'F')
+    """, nativeQuery = true)
+    int resetFailedContracts(Integer requestId);
+    
 
+    // Retrieve contracts by request ID and status
+    @Query(value = """
+        SELECT *
+        FROM dyn_disc_contract
+        WHERE request_id = :requestId AND status = :status
+    """, nativeQuery = true)
+    List<DynDiscContract> getContractsByStatus(Integer requestId, String status);
+    
 
+    // Fetch all unprocessed contracts for a request ID
+    @Query(value = """
+        SELECT * 
+        FROM dyn_disc_contract 
+        WHERE request_id = :requestId AND status = 'I'
+        ORDER BY co_id
+    """, nativeQuery = true)
+    List<DynDiscContract> fetchAllUnprocessedContracts(Integer requestId);
+    
 
+    // Reset failed and initial contracts
+    @Modifying
+    @Query(value = """
+        UPDATE dyn_disc_contract
+        SET status = 'I'
+        WHERE request_id = :requestId AND status IN ('I', 'F')
+    """, nativeQuery = true)
+    int resetFailedAndInitialContracts(Integer requestId);
 
+    // Assign new package IDs to contracts
+    @Modifying
+    @Query(value = """
+        UPDATE dyn_disc_contract
+        SET pack_id = CEIL(ROWNUM / :batchSize) + :nextPackIdStart - 1
+        WHERE request_id = :requestId AND status = 'I'
+    """, nativeQuery = true)
+    int assignNewPackIds(Integer requestId, int batchSize, int nextPackIdStart);
 
-}
+    // Fetch contracts for a specific package
+    @Query(value = """
+        SELECT * 
+        FROM dyn_disc_contract 
+        WHERE pack_id = :packageId AND request_id = :requestId AND status = 'I'
+    """, nativeQuery = true)
+    List<DynDiscContract> fetchContractsForPackage(Integer packageId, Integer requestId);
+
+    // Update contract status and remark
+    @Transactional   
+    @Modifying
+    @Query(value = """
+        UPDATE dyn_disc_contract
+        SET status = :status, remark = :errMsg
+        WHERE request_id = :requestId AND co_id = :coId
+    """, nativeQuery = true)
+    void updateContractStatusAndRemark(Integer requestId, Integer coId, String status, String errMsg);
+    }

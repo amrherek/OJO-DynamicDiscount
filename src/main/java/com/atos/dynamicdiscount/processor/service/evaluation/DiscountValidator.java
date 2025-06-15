@@ -172,7 +172,7 @@ public class DiscountValidator {
         }
 
         String errMsg = String.format(
-            "! AssignId %s: TM/SN (%s/%s) with AssignDate (%s) not eligible for DiscId %s.",
+            "! AssignId %s: TM/SN (%s/%s) not eligible for DiscId %s (not included or initial assignment date invalid).",
             dto.getAssignId(), dto.getTmCode(), dto.getOfferSnCode(), assignDate.format(formatter), dto.getDiscId());
         log.warn(errMsg);
         error.append(errMsg);

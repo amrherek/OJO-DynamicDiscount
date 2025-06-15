@@ -114,7 +114,9 @@ public class DiscountEvaluationService {
 		return DynDiscEvalHistory.builder().requestId(grant.getRequestId()).assignId(grant.getAssignId())
 				.customerId(latest.getCustomerId().intValue()).coId(latest.getCoId().intValue())
 				.billPeriodEndDate(cutoffDate)
-				.lbcDate(latest.getLbcDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime())
+				.lbcDate(latest.getLbcDate() != null 
+		         ? latest.getLbcDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()
+		         : null)
 				.prgCode(latest.getPrgcode()).tmCode(latest.getTmCode()).discSncode(latest.getDiscSncode().intValue())
 				.discId(latest.getDiscId().intValue()).occSncode(conf.getOccSncode()).occGlcode(conf.getOccGlcode())
 				.offerSncode(latest.getOfferSnCode().intValue()).occRemark(conf.getOccRemark())

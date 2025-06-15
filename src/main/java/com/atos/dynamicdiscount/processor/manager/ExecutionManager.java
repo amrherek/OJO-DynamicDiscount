@@ -1,16 +1,12 @@
 package com.atos.dynamicdiscount.processor.manager;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.atos.dynamicdiscount.enums.BillCycle;
-import com.atos.dynamicdiscount.exceptions.InvalidRequestNumberException;
-import com.atos.dynamicdiscount.model.dto.NewRequestResultDTO;
-import com.atos.dynamicdiscount.model.entity.DynDiscContract;
 import com.atos.dynamicdiscount.model.entity.DynDiscRequest;
 import com.atos.dynamicdiscount.processor.config.DynDiscConfigurations;
 import com.atos.dynamicdiscount.processor.service.billcycle.BillCycleService;
@@ -36,9 +32,7 @@ public class ExecutionManager {
     private  DynDiscConfigurations configurations;
 
 
-    @Value("${processing.batch.size:1000}")
-    private int batchSize;
-
+ 
     private static final String NEW_REQUEST = "c"; // Mode for creating a new request
     private static final String RESUME_REQUEST = "r"; // Mode for resuming an existing request
     
@@ -139,8 +133,7 @@ public class ExecutionManager {
 
             case "F":
             	log.info("Resuming request ID: {}, current status is 'F'", requestId);
-                int updated=requestService.resetFailedContracts(requestId);
-
+            	int updated=requestService.resetFailedContractsAndPackages(requestId);
                 if (updated >0) {
                     log.info("√ Processing resumed for request ID {}. Total contracts to process: {}", requestId, updated);
                     processRequest(request);
@@ -165,7 +158,7 @@ public class ExecutionManager {
    
         log.info("Processing request ID: {}.", request.getRequestId());
         // Process contracts in batches
-        batchProcessor.processInBatches(request, batchSize);
+        batchProcessor.processRequestPackages(request);
         // Finalize the request
         requestService.finalizeRequest(request.getRequestId());
         log.info("Completed discount processing for request ID: {}", request.getRequestId());

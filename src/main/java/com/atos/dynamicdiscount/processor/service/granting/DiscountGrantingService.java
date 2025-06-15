@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.atos.dynamicdiscount.model.entity.DynDiscEvalHistory;
 import com.atos.dynamicdiscount.model.entity.DynDiscGrantHistory;
@@ -23,7 +22,7 @@ public class DiscountGrantingService {
 	/**
 	 * Grants offer and ALO discounts by calling the BSCS stored procedure.
 	 */
-	@Transactional
+//	@Transactional
 	public void grantDiscount(DynDiscEvalHistory eval, DynDiscGrantHistory grant) {
 
 		// Grant offer discount if amount is valid
@@ -60,14 +59,23 @@ public class DiscountGrantingService {
 				Integer tmcode = eval.getTmCode();
 				Integer customerId = eval.getCustomerId();
 				Integer coId = eval.getCoId();
+				
+				// Start time for measuring execution duration
+			    long startTime = System.currentTimeMillis();
 
 				// Call the stored procedure to grant the OCC
 				jdbcTemplate.update("CALL bscs_wd.mcd_wan_pkg.man_addocc(?, ?, ?, ?, ?, ?, ?, ?, ?)", customerId, coId,
 						validFrom, amount * -1, remark, glcode, sncode, tmcode, validFrom);
 				
+			    // Calculate and log time taken
+			    long duration = System.currentTimeMillis() - startTime;
+			    log.info("✓ coId={} : OCC grant procedure completed in {} ms", coId, duration);
 				
+				
+			    /*
 				jdbcTemplate.update("CALL grant_promo_Result (?, ?, ?, ?, ?, ?, ?, ?, ?,?)",eval.getRequestId(), customerId, coId,
 						validFrom, amount*-1, remark, glcode, sncode, tmcode, validFrom);
+			     */
 				
 				
 

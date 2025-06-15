@@ -3,7 +3,6 @@ package com.atos.dynamicdiscount.processor.service.logging;
 import java.time.LocalDateTime;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.atos.dynamicdiscount.model.dto.DynDiscGrantEvalDTO;
 import com.atos.dynamicdiscount.model.entity.DynDiscAssign;
@@ -30,11 +29,13 @@ public class DiscountLogService {
 	private final DynDiscEvalHistoryRepository evalRepo;
 
 	/**
-	 * Records the full discount lifecycle: updates contract, logs evaluation and grant history, and updates assignment.
-	 * @param result DTO containing contract, evaluation, and grant information.
+	 * Records the full discount lifecycle: updates contract, logs evaluation and
+	 * grant history, and updates assignment.
+	 * 
+	 * @param result     DTO containing contract, evaluation, and grant information.
 	 * @param cutoffDate The date used for the processing cutoff.
 	 */
-	@Transactional
+	// @Transactional
 	public void recordDiscountLifecycle(DynDiscGrantEvalDTO result, LocalDateTime cutoffDate) {
 		// Extract entities
 		DynDiscContract contract = result.getDynDiscContract();
@@ -46,8 +47,7 @@ public class DiscountLogService {
 			log.error("DynDiscContract missing; skipping contract update.");
 			return;
 		}
-		
-		
+
 		if (grant != null) {
 			boolean offerOccFailed = Boolean.FALSE.equals(grant.getOfferOccCreated())
 					&& grant.getOfferDiscAmount() != 0;
@@ -73,24 +73,39 @@ public class DiscountLogService {
 		else {
 			log.debug("DynDiscGrantHistory missing; No grant recorded");
 		}
-		
-		contractRepo.save(contract);
-		log.debug("DynDiscContract [{}] saved.", contract.getCoId());
+
+		try {
+			contractRepo.save(contract);
+			log.debug("DynDiscContract [{}] saved.", contract.getCoId());
+		} catch (Exception e) {
+
+			log.error("Error saving DynDiscContract [{}]: {}", contract.getCoId(), e);
+			throw e;
+		}
 
 		// 2. Log Evaluation History
 		if (eval != null) {
-			evalRepo.save(eval);
-			log.debug("DynDiscEvalHistory [{}] saved.", eval.getAssignId());
+			try {
+				evalRepo.save(eval);
+				log.debug("DynDiscEvalHistory [{}] saved.", eval.getAssignId());
+			} catch (Exception e) {
+				log.error("Error saving DynDiscEvalHistory [{}]: {}", eval.getAssignId(), e);
+				throw e;
+			}
 		}
 
 		// 3. Log Grant History
 		if (grant != null) {
-			grantRepo.save(grant);
-			log.debug("DynDiscGrantHistory [{}] saved.", grant.getAssignId());
 
-	  // 4. Update DYN_DISC_ASSIGN
-			// start comment
-		
+			try {
+				grantRepo.save(grant);
+				log.debug("DynDiscGrantHistory [{}] saved.", grant.getAssignId());
+			} catch (Exception e) {
+				log.error("Error saving DynDiscGrantHistory [{}]: {}", grant.getAssignId(), e);
+				throw e;
+			}
+
+			// 4. Update DYN_DISC_ASSIGN
 			try {
 				DynDiscAssign assign = assignRepo.findById(grant.getAssignId())
 						.orElseThrow(() -> new EntityNotFoundException("Assign not found: " + grant.getAssignId()));
@@ -102,29 +117,19 @@ public class DiscountLogService {
 				assignRepo.save(assign);
 				log.debug("DynDiscAssign [{}] updated.", assign.getAssignId());
 			} catch (EntityNotFoundException e) {
-				log.error("Error updating DynDiscAssign: {}", e.getMessage());
+				log.error("Error saving DynDiscAssign [{}]: {}", grant.getAssignId(), e);
+				throw e;
 			}
-			//end comment for testing */
 		}
 
 		// 5. Grant Confirmation Log
 		if (grant != null) {
-			log.info("✓ coId={} : Grant Details = [RequestId={}, AssignId={}, OfferDiscAmount={}, FreeMonth={}, SpecialMonth={}, OfferCapped={}, CurrentApplyCount={}, LastApply={}, AloDiscAmount={}, AloDiscInd={}, AloCapped={}, Note={}, OfferOccCreated={}, AloOccCreated={}]",
-			        contract.getCoId(),
-			        grant.getRequestId(),
-			        grant.getAssignId(),
-			        grant.getOfferDiscAmount(),
-			        grant.getFreeMonth(),
-			        grant.getSpecialMonth(),
-			        grant.getOfferCapped(),
-			        grant.getCurrentApplyCount(),
-			        grant.getLastApply(),
-			        grant.getAloDiscAmount(),
-			        grant.getAloDiscInd(),
-			        grant.getAloCapped(),
-			        grant.getNote(),
-			        grant.getOfferOccCreated(),
-			        grant.getAloOccCreated());
+			log.info(
+					"✓ coId={} : Grant Details = [RequestId={}, AssignId={}, OfferDiscAmount={}, FreeMonth={}, SpecialMonth={}, OfferCapped={}, CurrentApplyCount={}, LastApply={}, AloDiscAmount={}, AloDiscInd={}, AloCapped={}, Note={}, OfferOccCreated={}, AloOccCreated={}]",
+					contract.getCoId(), grant.getRequestId(), grant.getAssignId(), grant.getOfferDiscAmount(),
+					grant.getFreeMonth(), grant.getSpecialMonth(), grant.getOfferCapped(), grant.getCurrentApplyCount(),
+					grant.getLastApply(), grant.getAloDiscAmount(), grant.getAloDiscInd(), grant.getAloCapped(),
+					grant.getNote(), grant.getOfferOccCreated(), grant.getAloOccCreated());
 		}
 	}
 }

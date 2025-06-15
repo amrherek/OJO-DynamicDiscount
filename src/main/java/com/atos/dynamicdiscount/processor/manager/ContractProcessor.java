@@ -2,11 +2,8 @@ package com.atos.dynamicdiscount.processor.manager;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
 import com.atos.dynamicdiscount.model.dto.DynDiscAssignDTO;
@@ -19,6 +16,7 @@ import com.atos.dynamicdiscount.processor.service.evaluation.DiscountEvaluationS
 import com.atos.dynamicdiscount.processor.service.granting.DiscountGrantingService;
 import com.atos.dynamicdiscount.processor.service.logging.DiscountLogService;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -27,7 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ContractProcessor {
 
-	private final ThreadPoolTaskExecutor executor;
+
 	private final DiscountEvaluationService evalService;
 	private final DiscountGrantingService grantService;
 	private final DiscountLogService logService;
@@ -35,16 +33,16 @@ public class ContractProcessor {
 	/**
 	 * Full async pipeline for a single contract: 1) evaluate 2) grant 3) record
 	 */
-	public CompletableFuture<Void> processContract(DynDiscRequest request, DynDiscContract contract,
+	
+    @Transactional
+	public void processContract(DynDiscRequest request, DynDiscContract contract,
 			List<DynDiscAssignDTO> discounts) {
 
 		Integer coId = contract.getCoId();
 		LocalDateTime cutoff = request.getBillPeriodEndDate();
 		String assignIds = discounts.stream().map(DynDiscAssignDTO::getAssignId).map(Object::toString)
 				.collect(Collectors.joining(", "));
-
-		return CompletableFuture.runAsync(() -> {
-			try {
+		
 				log.info("-------------- Processing coId={} --------------", coId);
 				log.info("> coId={} : evaluating {} discounts (AssignIds={})", coId, discounts.size(), assignIds);
 							
@@ -63,21 +61,5 @@ public class ContractProcessor {
 				// 3) Record the discount lifecycle event
 				logService.recordDiscountLifecycle(discGrantEval, cutoff);
 				log.info("< coId={} : processing complete", coId); // Indicate successful processing
-
-				}
-
-			 catch (Exception ex) {
-				log.error("✗ Error processing coId={}", coId, ex);
 			}
-		}, executor);
-	}
-	
-	
-	@Scheduled(fixedRate = 300000) // Adjust interval as needed
-	public void logThreadPoolStatus() {
-	    log.info("Thread pool: Active={}, Queue Size={}, Completed Tasks={}",
-	        executor.getActiveCount(),
-	        executor.getThreadPoolExecutor().getQueue().size(),
-	        executor.getThreadPoolExecutor().getCompletedTaskCount());
-	}
 }
