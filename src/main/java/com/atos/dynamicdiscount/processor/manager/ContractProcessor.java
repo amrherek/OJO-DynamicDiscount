@@ -1,9 +1,14 @@
 package com.atos.dynamicdiscount.processor.manager;
 
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.lang.Contract;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 
 import com.atos.dynamicdiscount.model.dto.DynDiscAssignDTO;
@@ -34,7 +39,12 @@ public class ContractProcessor {
 	 * Full async pipeline for a single contract: 1) evaluate 2) grant 3) record
 	 */
 	
-    @Transactional
+    
+    @Retryable(
+            value = { SQLException.class },
+            maxAttempts = 5,
+            backoff = @Backoff(delay = 2000, multiplier = 2))
+	@Transactional
 	public void processContract(DynDiscRequest request, DynDiscContract contract,
 			List<DynDiscAssignDTO> discounts) {
 
@@ -62,4 +72,11 @@ public class ContractProcessor {
 				logService.recordDiscountLifecycle(discGrantEval, cutoff);
 				log.info("< coId={} : processing complete", coId); // Indicate successful processing
 			}
+    
+    
+    @Recover
+    public void recover(SQLException e, DynDiscContract contract) throws SQLException {
+        log.error("Retries exhausted for contract: {}", contract.getCoId(), e);
+        throw e; // Rethrow the exception to propagate it further
+    }
 }

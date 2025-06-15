@@ -65,6 +65,12 @@ public class DataSourceConfig {
         hikariConfig.setConnectionTimeout(connectionTimeout);
         hikariConfig.setConnectionTestQuery(connectionTestQuery);
         hikariConfig.addDataSourceProperty("keepaliveTime", keepAliveTime); // Keep-alive tests
+        //hikariConfig.setLeakDetectionThreshold(20000); // 20 seconds
+        hikariConfig.setPoolName("DynamicDiscountHikariPool");
+        hikariConfig.setAutoCommit(false);
+
+
+
 
         return new HikariDataSource(hikariConfig);
     }
