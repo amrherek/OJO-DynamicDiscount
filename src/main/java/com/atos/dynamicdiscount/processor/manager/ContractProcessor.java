@@ -38,7 +38,6 @@ public class ContractProcessor {
 	/**
 	 * Full async pipeline for a single contract: 1) evaluate 2) grant 3) record
 	 */
-	
     
     @Retryable(
             value = { SQLException.class },
