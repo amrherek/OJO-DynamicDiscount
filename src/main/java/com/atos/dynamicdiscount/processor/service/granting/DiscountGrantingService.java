@@ -1,8 +1,8 @@
 package com.atos.dynamicdiscount.processor.service.granting;
 
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 
-import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -22,90 +22,86 @@ public class DiscountGrantingService {
 	/**
 	 * Grants offer and ALO discounts by calling the BSCS stored procedure.
 	 */
-//	@Transactional
 	public void grantDiscount(DynDiscEvalHistory eval, DynDiscGrantHistory grant) {
+		 // Grant Offer discount
+	    grantDiscountIfValid(eval, grant, "Offer", grant.getOfferDiscAmount(), "");
 
-		// Grant offer discount if amount is valid
-		grantOcc(eval, grant, "", "Offer");
-
-		// Grant ALO discount if indicator is true and amount is valid
-		if (Boolean.TRUE.equals(grant.getAloDiscInd()) && grant.getAloDiscAmount() != null
-				&& grant.getAloDiscAmount() > 0) {
-			grantOcc(eval, grant, " ALO", "ALO");
-		}
+	    // Grant ALO discount if the indicator is true
+	    if (Boolean.TRUE.equals(grant.getAloDiscInd())) {
+	        grantDiscountIfValid(eval, grant, "ALO", grant.getAloDiscAmount(), " ALO");
+	    }
 	}
-
+	
+	
 	/**
-	 * Helper method to call the stored procedure for granting a discount. Extracts
-	 * the amount from the grant object and updates the grant history with OCC
-	 * created flags.
+	 * Helper method to grant a discount if the amount is valid.
 	 */
-	private void grantOcc(DynDiscEvalHistory eval, DynDiscGrantHistory grant, String remarkSuffix,
-			String discountType) {
-		Float amount = null;
-		if ("Offer".equals(discountType)) {
-			amount = grant.getOfferDiscAmount();
-		} else if ("ALO".equals(discountType)) {
-			amount = grant.getAloDiscAmount();
+	private void grantDiscountIfValid(DynDiscEvalHistory eval, DynDiscGrantHistory grant, 
+	                                  String discountType, Float amount, String remarkSuffix) {
+	    if (amount != null && amount > 0) {
+	        grantOcc(eval, grant, remarkSuffix, discountType, amount);
+	    } else {
+	        setOccCreatedFlag(grant, discountType, false);
+	        log.info("- coId={} : {} OCC not created (AssignId={}): Zero/null amount.", 
+	                  eval.getCoId(), discountType, eval.getAssignId());
+	    }
+	}
+
+	
+	/**
+	 * Helper method to call the stored procedure for granting a discount OCC.
+	 */
+	private void grantOcc(DynDiscEvalHistory eval, DynDiscGrantHistory grant, 
+	                      String remarkSuffix, String discountType, Float amount) {
+	    boolean success = false;
+	    try {
+	        LocalDateTime validFrom = eval.getBillPeriodEndDate().minusDays(1);
+	        String remark = eval.getOccRemark() + remarkSuffix;
+
+	        long startTime = System.currentTimeMillis();
+
+	        jdbcTemplate.update(
+	            "CALL bscs_wd.mcd_wan_pkg.man_addocc(?, ?, ?, ?, ?, ?, ?, ?, ?)",
+	            eval.getCustomerId(), eval.getCoId(), validFrom, amount * -1, 
+	            remark, eval.getOccGlcode(), eval.getOccSncode(), eval.getTmCode(), validFrom
+	        );
+		    
+	        /*
+				jdbcTemplate.update("CALL grant_promo_Result (?, ?, ?, ?, ?, ?, ?, ?, ?,?)",eval.getRequestId(),     eval.getCustomerId(), eval.getCoId(), validFrom, amount * -1, 
+	            remark, eval.getOccGlcode(), eval.getOccSncode(), eval.getTmCode(), validFrom);
+		     */
+				
+	        long duration = System.currentTimeMillis() - startTime;
+	        log.info("✓ coId={} : {} OCC grant completed in {} ms (AssignId={})", 
+	                 eval.getCoId(), discountType, duration, eval.getAssignId());
+
+	        success = true;
+		} catch (Exception ex) {
+			if (ex instanceof SQLException) {
+				log.error("✗ coId={} : {} OCC grant failed with SQLException (AssignId={})", eval.getCoId(),
+						discountType, eval.getAssignId(), ex);
+				throw ex; // Propagate SQLExceptions
+			} else {
+				log.error("✗ coId={} : {} OCC grant failed with non-SQLException (AssignId={})", eval.getCoId(),
+						discountType, eval.getAssignId(), ex);
+			}
 		}
 
-		if (amount != null && amount != 0) {
-			boolean success = false;
-			try {
-				LocalDateTime validFrom = eval.getBillPeriodEndDate().minusDays(1);
-				String remark = eval.getOccRemark() + remarkSuffix;
-				String glcode = eval.getOccGlcode();
-				Integer sncode = eval.getOccSncode();
-				Integer tmcode = eval.getTmCode();
-				Integer customerId = eval.getCustomerId();
-				Integer coId = eval.getCoId();
-				
-				// Start time for measuring execution duration
-			    long startTime = System.currentTimeMillis();
-
-				// Call the stored procedure to grant the OCC
-				jdbcTemplate.update("CALL bscs_wd.mcd_wan_pkg.man_addocc(?, ?, ?, ?, ?, ?, ?, ?, ?)", customerId, coId,
-						validFrom, amount * -1, remark, glcode, sncode, tmcode, validFrom);
-				
-			    // Calculate and log time taken
-			    long duration = System.currentTimeMillis() - startTime;
-			    log.info("✓ coId={} : OCC grant procedure completed in {} ms", coId, duration);
-				
-				
-			    /*
-				jdbcTemplate.update("CALL grant_promo_Result (?, ?, ?, ?, ?, ?, ?, ?, ?,?)",eval.getRequestId(), customerId, coId,
-						validFrom, amount*-1, remark, glcode, sncode, tmcode, validFrom);
-			     */
-				
-				
-
-				success = true;
-				log.info("✓ coId={} : {} discount OCC granted (AssignId={})", coId, discountType, eval.getAssignId());
-
-			} catch (DataAccessException ex) {
-				log.error("✗ coId={} : {} discount OCC grant failed (AssignId={})", eval.getCoId(), discountType,
-						eval.getAssignId());
-				ex.printStackTrace();
-			} finally {
-				// Set the OCC created flag based on the success of the stored procedure call
-				if ("Offer".equals(discountType)) {
-					grant.setOfferOccCreated(success);
-				} else if ("ALO".equals(discountType)) {
-					grant.setAloOccCreated(success);
-				}
-			}
-		} else {
-			// Set OCC created flag to null if no valid amount to process (not created)
-			if ("Offer".equals(discountType)) {
-				grant.setOfferOccCreated(false);
-				log.info("- coId={} : Offer OCC not created (AssignId={}): Zero/null amount.", eval.getCoId(),
-						eval.getAssignId());
-			} else if ("ALO".equals(discountType)) {
-				grant.setAloOccCreated(false);
-				log.info("- coId={} : ALO OCC not created (AssignId={}): Zero/null amount.", eval.getCoId(),
-						eval.getAssignId());
-			}
-
+		finally {
+			setOccCreatedFlag(grant, discountType, success);
 		}
 	}
+	
+	
+	/**
+	 * Sets the OCC created flag for the given discount type.
+	 */
+	private void setOccCreatedFlag(DynDiscGrantHistory grant, String discountType, boolean success) {
+	    if ("Offer".equals(discountType)) {
+	        grant.setOfferOccCreated(success);
+	    } else if ("ALO".equals(discountType)) {
+	        grant.setAloOccCreated(success);
+	    }
+	}
+	
 }

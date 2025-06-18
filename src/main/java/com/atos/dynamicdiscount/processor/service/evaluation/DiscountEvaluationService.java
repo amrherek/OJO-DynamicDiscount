@@ -93,11 +93,13 @@ public class DiscountEvaluationService {
 			DynDiscEvalHistory eval = buildEvalHistory(latest, grant, cutoffDate);
 			return buildResult(contract, eval, grant, null,null);
 
-		} catch (Exception ex) {
-			String msg = "Error during discount evaluation for contract " + contract.getCoId();
-			log.error("✗ {}, {}", msg, ex);
-			return buildResult(contract, null, null, "F", msg);
 		}
+		catch (Exception ex) {
+		    String msg = "Error during discount evaluation for contract " + contract.getCoId() + ": " + ex.getMessage();
+		    log.error("✗ {}, {}", msg, ex);
+		    return buildResult(contract, null, null, "F", msg);
+		}
+		
 	}
 
 	private DynDiscGrantEvalDTO buildResult(DynDiscContract contract, DynDiscEvalHistory eval,

@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.lang.Contract;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
@@ -21,6 +20,7 @@ import com.atos.dynamicdiscount.processor.service.evaluation.DiscountEvaluationS
 import com.atos.dynamicdiscount.processor.service.granting.DiscountGrantingService;
 import com.atos.dynamicdiscount.processor.service.logging.DiscountLogService;
 
+import jakarta.persistence.PersistenceException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +41,7 @@ public class ContractProcessor {
     
 	
     @Retryable(
-            value = { SQLException.class },
+            value = { SQLException.class ,PersistenceException.class},
             maxAttempts = 5,
             backoff = @Backoff(delay = 2000, multiplier = 2))
 	@Transactional

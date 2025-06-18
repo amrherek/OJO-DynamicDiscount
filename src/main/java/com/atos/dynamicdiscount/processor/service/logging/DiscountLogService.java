@@ -23,113 +23,115 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class DiscountLogService {
 
-	private final DynDiscContractRepository contractRepo;
-	private final DynDiscAssignRepository assignRepo;
-	private final DynDiscGrantHistoryRepository grantRepo;
-	private final DynDiscEvalHistoryRepository evalRepo;
+    private final DynDiscContractRepository contractRepo;
+    private final DynDiscAssignRepository assignRepo;
+    private final DynDiscGrantHistoryRepository grantRepo;
+    private final DynDiscEvalHistoryRepository evalRepo;
 
-	/**
-	 * Records the full discount lifecycle: updates contract, logs evaluation and
-	 * grant history, and updates assignment.
-	 * 
-	 * @param result     DTO containing contract, evaluation, and grant information.
-	 * @param cutoffDate The date used for the processing cutoff.
-	 */
-	// @Transactional
-	public void recordDiscountLifecycle(DynDiscGrantEvalDTO result, LocalDateTime cutoffDate) {
-		// Extract entities
-		DynDiscContract contract = result.getDynDiscContract();
-		DynDiscEvalHistory eval = result.getDynDiscEvalHistory();
-		DynDiscGrantHistory grant = result.getDynDiscGrantHistory();
+    /**
+     * Records the full discount lifecycle by saving contract, evaluation history,
+     * grant history, and assignment updates.
+     */
+    public void recordDiscountLifecycle(DynDiscGrantEvalDTO result, LocalDateTime cutoffDate) {
+        DynDiscContract contract = result.getDynDiscContract();
+        DynDiscEvalHistory eval = result.getDynDiscEvalHistory();
+        DynDiscGrantHistory grant = result.getDynDiscGrantHistory();
 
-		// 1. Update DYN_DISC_CONTRACT
-		if (contract == null) {
-			log.error("DynDiscContract missing; skipping contract update.");
-			return;
-		}
+        if (contract == null) {
+            log.error("DynDiscContract missing; skipping lifecycle recording.");
+            return;
+        }
 
-		if (grant != null) {
-			boolean offerOccFailed = Boolean.FALSE.equals(grant.getOfferOccCreated())
-					&& grant.getOfferDiscAmount() != 0;
-			boolean aloOccFailed = Boolean.FALSE.equals(grant.getAloOccCreated()) && grant.getAloDiscAmount() != 0;
-			contract.setStatus((offerOccFailed || aloOccFailed) ? "F" : "P");
-			String remark;
-			if (contract.getStatus().equals("P")) {
-				boolean offerOccGranted = Boolean.TRUE.equals(grant.getOfferOccCreated());
-				boolean aloOccGranted = Boolean.TRUE.equals(grant.getAloOccCreated());
-				String grantedDetails = (offerOccGranted && aloOccGranted) ? "both Offer and ALO OCCs granted"
-						: offerOccGranted ? "Offer OCC granted" : aloOccGranted ? "ALO OCC granted" : "no OCC granted";
-				remark = "AssignId=" + grant.getAssignId() + ": Successfully applied (" + grantedDetails + ").";
-			} else {
-				remark = "AssignId=" + grant.getAssignId() + ": Failed due to: "
-						+ (offerOccFailed ? "Offer OCC creation failure" : "")
-						+ (offerOccFailed && aloOccFailed ? " and " : "")
-						+ (aloOccFailed ? "ALO OCC creation failure" : "") + ".";
-			}
+        if (eval != null && grant != null) {
+            updateContractStatusAndRemark(contract, grant);
+            saveEvaluationHistory(eval);
+            saveGrantHistory(grant);
+            updateAndSaveAssignment(grant, cutoffDate);
+            logGrantDetails(contract, grant);
+        }
 
-			contract.setRemark(remark);
-		}
+        saveContract(contract);
+    }
 
-		else {
-			log.debug("DynDiscGrantHistory missing; No grant recorded");
-		}
+    private void updateContractStatusAndRemark(DynDiscContract contract, DynDiscGrantHistory grant) {
+        boolean offerOccFailed = Boolean.FALSE.equals(grant.getOfferOccCreated()) && grant.getOfferDiscAmount() != 0;
+        boolean aloOccFailed = Boolean.FALSE.equals(grant.getAloOccCreated()) && grant.getAloDiscAmount() != 0;
 
-		try {
-			contractRepo.save(contract);
-			log.debug("DynDiscContract [{}] saved.", contract.getCoId());
-		} catch (Exception e) {
+        contract.setStatus((offerOccFailed || aloOccFailed) ? "F" : "P");
+        contract.setRemark(createContractRemark(grant, offerOccFailed, aloOccFailed));
+    }
 
-			log.error("Error saving DynDiscContract [{}]: {}", contract.getCoId(), e);
-			throw e;
-		}
+    private String createContractRemark(DynDiscGrantHistory grant, boolean offerOccFailed, boolean aloOccFailed) {
+        if (!offerOccFailed && !aloOccFailed) {
+            String grantedDetails = Boolean.TRUE.equals(grant.getOfferOccCreated()) && Boolean.TRUE.equals(grant.getAloOccCreated())
+                    ? "both Offer and ALO OCCs granted"
+                    : Boolean.TRUE.equals(grant.getOfferOccCreated()) ? "Offer OCC granted"
+                    : "ALO OCC granted";
+            return String.format("AssignId=%d: Successfully applied (%s).", grant.getAssignId(), grantedDetails);
+        }
+        return String.format("AssignId=%d: Failed due to: %s%s%s.",
+                grant.getAssignId(),
+                offerOccFailed ? "Offer OCC creation failure" : "",
+                (offerOccFailed && aloOccFailed) ? " and " : "",
+                aloOccFailed ? "ALO OCC creation failure" : "");
+    }
 
-		// 2. Log Evaluation History
-		if (eval != null) {
-			try {
-				evalRepo.save(eval);
-				log.debug("DynDiscEvalHistory [{}] saved.", eval.getAssignId());
-			} catch (Exception e) {
-				log.error("Error saving DynDiscEvalHistory [{}]: {}", eval.getAssignId(), e);
-				throw e;
-			}
-		}
+    private void saveContract(DynDiscContract contract) {
+        try {
+            contractRepo.save(contract);
+            log.debug("DynDiscContract [{}] saved.", contract.getCoId());
+        } catch (Exception e) {
+            log.error("Error saving DynDiscContract [{}]: {}", contract.getCoId(), e);
+            throw e;
+        }
+    }
 
-		// 3. Log Grant History
-		if (grant != null) {
+    private void saveEvaluationHistory(DynDiscEvalHistory eval) {
+        try {
+            evalRepo.save(eval);
+            log.debug("DynDiscEvalHistory [{}] saved.", eval.getAssignId());
+        } catch (Exception e) {
+            log.error("Error saving DynDiscEvalHistory [{}]: {}", eval.getAssignId(), e);
+            throw e;
+        }
+    }
 
-			try {
-				grantRepo.save(grant);
-				log.debug("DynDiscGrantHistory [{}] saved.", grant.getAssignId());
-			} catch (Exception e) {
-				log.error("Error saving DynDiscGrantHistory [{}]: {}", grant.getAssignId(), e);
-				throw e;
-			}
+    private void saveGrantHistory(DynDiscGrantHistory grant) {
+        try {
+            grantRepo.save(grant);
+            log.debug("DynDiscGrantHistory [{}] saved.", grant.getAssignId());
+        } catch (Exception e) {
+            log.error("Error saving DynDiscGrantHistory [{}]: {}", grant.getAssignId(), e);
+            throw e;
+        }
+    }
 
-			// 4. Update DYN_DISC_ASSIGN
-			try {
-				DynDiscAssign assign = assignRepo.findById(grant.getAssignId())
-						.orElseThrow(() -> new EntityNotFoundException("Assign not found: " + grant.getAssignId()));
-				assign.setLastAppliedDate(cutoffDate);
-				assign.setApplyCount(grant.getCurrentApplyCount());
-				if (Boolean.TRUE.equals(grant.getLastApply())) {
-					assign.setExpireDate(cutoffDate);
-				}
-				assignRepo.save(assign);
-				log.debug("DynDiscAssign [{}] updated.", assign.getAssignId());
-			} catch (EntityNotFoundException e) {
-				log.error("Error saving DynDiscAssign [{}]: {}", grant.getAssignId(), e);
-				throw e;
-			}
-		}
+    private void updateAndSaveAssignment(DynDiscGrantHistory grant, LocalDateTime cutoffDate) {
+        try {
+            DynDiscAssign assign = assignRepo.findById(grant.getAssignId())
+                    .orElseThrow(() -> new EntityNotFoundException("Assignment not found: " + grant.getAssignId()));
 
-		// 5. Grant Confirmation Log
-		if (grant != null) {
-			log.info(
-					"✓ coId={} : Grant Details = [RequestId={}, AssignId={}, OfferDiscAmount={}, FreeMonth={}, SpecialMonth={}, OfferCapped={}, CurrentApplyCount={}, LastApply={}, AloDiscAmount={}, AloDiscInd={}, AloCapped={}, Note={}, OfferOccCreated={}, AloOccCreated={}]",
-					contract.getCoId(), grant.getRequestId(), grant.getAssignId(), grant.getOfferDiscAmount(),
-					grant.getFreeMonth(), grant.getSpecialMonth(), grant.getOfferCapped(), grant.getCurrentApplyCount(),
-					grant.getLastApply(), grant.getAloDiscAmount(), grant.getAloDiscInd(), grant.getAloCapped(),
-					grant.getNote(), grant.getOfferOccCreated(), grant.getAloOccCreated());
-		}
-	}
+            assign.setLastAppliedDate(cutoffDate);
+            assign.setApplyCount(grant.getCurrentApplyCount());
+
+            if (Boolean.TRUE.equals(grant.getLastApply())) {
+                assign.setExpireDate(cutoffDate);
+            }
+
+            assignRepo.save(assign);
+            log.debug("DynDiscAssign [{}] updated.", assign.getAssignId());
+        } catch (Exception e) {
+            log.error("Error updating DynDiscAssign [{}]: {}", grant.getAssignId(), e);
+            throw e;
+        }
+    }
+
+    private void logGrantDetails(DynDiscContract contract, DynDiscGrantHistory grant) {
+        log.info(
+                "✓ coId={} : Grant Details = [RequestId={}, AssignId={}, OfferDiscAmount={}, FreeMonth={}, SpecialMonth={}, OfferCapped={}, CurrentApplyCount={}, LastApply={}, AloDiscAmount={}, AloDiscInd={}, AloCapped={}, Note={}, OfferOccCreated={}, AloOccCreated={}]",
+                contract.getCoId(), grant.getRequestId(), grant.getAssignId(), grant.getOfferDiscAmount(),
+                grant.getFreeMonth(), grant.getSpecialMonth(), grant.getOfferCapped(), grant.getCurrentApplyCount(),
+                grant.getLastApply(), grant.getAloDiscAmount(), grant.getAloDiscInd(), grant.getAloCapped(),
+                grant.getNote(), grant.getOfferOccCreated(), grant.getAloOccCreated());
+    }
 }
