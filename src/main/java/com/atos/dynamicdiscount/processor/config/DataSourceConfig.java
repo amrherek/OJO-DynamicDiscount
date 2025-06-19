@@ -12,6 +12,7 @@ import com.zaxxer.hikari.HikariDataSource;
 @Configuration
 public class DataSourceConfig {
 
+    // Database connection properties
     @Value("${spring.datasource.url}")
     private String dbUrl;
 
@@ -31,47 +32,58 @@ public class DataSourceConfig {
     @Value("${spring.datasource.hikari.maximum-pool-size:100}")
     private int maximumPoolSize; // Maximum number of connections in the pool
 
-    @Value("${spring.datasource.hikari.idle-timeout:300000}")
-    private long idleTimeout; // Maximum idle time before removing a connection (ms)
+    @Value("${spring.datasource.hikari.idle-timeout:600000}")
+    private long idleTimeout; // Maximum idle time before removing a connection (in ms)
 
     @Value("${spring.datasource.hikari.max-lifetime:1800000}")
-    private long maxLifetime; // Maximum lifetime of a connection in the pool (ms)
+    private long maxLifetime; // Maximum lifetime of a connection in the pool (in ms)
 
     @Value("${spring.datasource.hikari.connection-timeout:30000}")
-    private long connectionTimeout; // Maximum time to wait for a connection (ms)
+    private long connectionTimeout; // Maximum time to wait for a connection (in ms)
 
-    @Value("${spring.datasource.hikari.connection-test-query:SELECT 1 FROM DUAL}")
-    private String connectionTestQuery; // Query to validate connections
+    @Value("${spring.datasource.hikari.socket-timeout:30000}")
+    private long socketTimeout; // TCP-level timeout (in ms)
+
+    @Value("${spring.datasource.hikari.validation-timeout:5000}")
+    private long validationTimeout; // Validation timeout for connections (in ms)
 
     @Value("${spring.datasource.hikari.keepalive-time:30000}")
-    private long keepAliveTime; // Interval for keep-alive tests (ms)
+    private long keepAliveTime; // Interval for keep-alive tests (in ms)
 
-    
-
-    
     @Bean
     public DataSource dataSource() {
         HikariConfig hikariConfig = new HikariConfig();
-        hikariConfig.setJdbcUrl(dbUrl); // JDBC URL
-        hikariConfig.setUsername(dbUsername); // Database username
-        hikariConfig.setPassword(dbPassword); // Database password
-        hikariConfig.setDriverClassName(driverClassName); // Driver class name
+        
+        // Basic database connection setup
+        hikariConfig.setJdbcUrl(dbUrl);
+        hikariConfig.setUsername(dbUsername);
+        hikariConfig.setPassword(dbPassword);
+        hikariConfig.setDriverClassName(driverClassName);
 
-        // Configure HikariCP properties
+        // HikariCP pool settings
         hikariConfig.setMinimumIdle(minimumIdle);
         hikariConfig.setMaximumPoolSize(maximumPoolSize);
         hikariConfig.setIdleTimeout(idleTimeout);
         hikariConfig.setMaxLifetime(maxLifetime);
         hikariConfig.setConnectionTimeout(connectionTimeout);
-        hikariConfig.setConnectionTestQuery(connectionTestQuery);
-        hikariConfig.addDataSourceProperty("keepaliveTime", keepAliveTime); // Keep-alive tests
-        //hikariConfig.setLeakDetectionThreshold(20000); // 20 seconds
         hikariConfig.setPoolName("DynamicDiscountHikariPool");
         hikariConfig.setAutoCommit(false);
 
+        // Connection validation setup (Oracle optimized)
+        hikariConfig.addDataSourceProperty("oracle.jdbc.fastConnectionValidation", "true");
+        hikariConfig.setValidationTimeout(validationTimeout);
+        hikariConfig.setKeepaliveTime(keepAliveTime); 
 
 
+        // TCP-level protection
+        hikariConfig.addDataSourceProperty("socketTimeout", socketTimeout);
 
+        // Optimizations for Oracle Database
+        hikariConfig.addDataSourceProperty("oracle.jdbc.implicitStatementCacheSize", "100");
+        
         return new HikariDataSource(hikariConfig);
     }
 }
+
+
+

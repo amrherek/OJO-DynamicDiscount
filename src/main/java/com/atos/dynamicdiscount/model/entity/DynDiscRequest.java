@@ -7,18 +7,14 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Data;
-import lombok.ToString;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "DYN_DISC_REQUEST")
 @Data
-@ToString
+@NoArgsConstructor
 public class DynDiscRequest {
 
-	// @GeneratedValue(strategy = GenerationType.SEQUENCE, generator =
-	// "request_id_seq")
-	// @SequenceGenerator(name = "request_id_seq", sequenceName =
-	// "request_id_sequence", allocationSize = 1)
 	@Id
 	@Column(name = "request_id")
 	private Integer requestId;

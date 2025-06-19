@@ -2,7 +2,6 @@ package com.atos.dynamicdiscount.processor.service.evaluation;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -140,11 +139,6 @@ public class DiscountValidator {
      * Checks if the discount offer is eligible based on TMCode and SNCode matching.
      */
     private boolean isOfferEligible(DynDiscAssignDTO dto, StringBuilder error) {
-    	
-    	
-    	// Create formatter for "YYYYMMDDHH24MISS" pattern
-    	DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
     	
         LocalDateTime assignDate = dto.getAssignDate().toInstant()
             .atZone(ZoneId.systemDefault())

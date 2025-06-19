@@ -9,15 +9,14 @@ import jakarta.persistence.IdClass;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Data
+
 @Entity
 @Table(name = "DYN_DISC_CONTRACT")
 @IdClass(DynDiscContractId.class) // Use @IdClass for composite key
-@AllArgsConstructor
+@Data
 @NoArgsConstructor
 public class DynDiscContract {
 

@@ -7,7 +7,6 @@ import jakarta.persistence.Embeddable;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.ToString;
 
 /**
  * Composite primary key for the DynDiscFreeMonth entity.
@@ -16,7 +15,6 @@ import lombok.ToString;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString
 public class DynDiscFreeMonthId implements Serializable {
 
     @Column(name = "offer_id", nullable = false)
@@ -25,5 +23,4 @@ public class DynDiscFreeMonthId implements Serializable {
     @Column(name = "month_no", nullable = false)
     private Integer monthNo;
 
-    // Add constructors if required
 }

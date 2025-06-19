@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -19,10 +18,6 @@ public interface DynDiscAssignRepository extends JpaRepository<DynDiscAssign, Lo
 	@Query(value = "SELECT * FROM dyn_disc_assign WHERE assign_id = (SELECT MAX(assign_id) FROM dyn_disc_assign WHERE DELETE_DATE is NULL and co_id = :coId AND disc_sncode = :discSncode)", nativeQuery = true)
 	Optional<DynDiscAssign> findLatestAssign(@Param("coId") Integer coId, @Param("discSncode") Integer discSncode);
 	
-
-
-	
-
 	
 	@Query(nativeQuery = true,value = """
 			WITH

@@ -7,7 +7,6 @@ import jakarta.persistence.Embeddable;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.ToString;
 
 /**
  * Composite primary key for the DynDiscCustGrpExcl entity.
@@ -16,7 +15,7 @@ import lombok.ToString;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString
+
 public class DynDiscPriceGroupId implements Serializable {
 
     @Column(name = "disc_id", nullable = false)
@@ -24,6 +23,4 @@ public class DynDiscPriceGroupId implements Serializable {
 
     @Column(name = "prgcode", nullable = false)
     private String prgcode;
-
-    // Add constructors if needed
 }

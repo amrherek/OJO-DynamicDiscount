@@ -7,7 +7,6 @@ import jakarta.persistence.Embeddable;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.ToString;
 
 /**
  * Composite primary key for the DynDiscSpecialMonth entity.

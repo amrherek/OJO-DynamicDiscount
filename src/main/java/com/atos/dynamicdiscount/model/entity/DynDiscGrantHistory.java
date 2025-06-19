@@ -1,7 +1,5 @@
 package com.atos.dynamicdiscount.model.entity;
 
-import java.io.Serializable;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -12,14 +10,16 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+
+@Entity
+@Table(name = "DYN_DISC_GRANT_HISTORY")
+@IdClass(DynDiscGrantHistoryId.class)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Entity
-@Table(name = "DYN_DISC_GRANT_HISTORY")
-@IdClass(DynDiscGrantHistoryId.class)
-public class DynDiscGrantHistory implements Serializable {
+
+public class DynDiscGrantHistory {
 
 	@Id
 	@Column(name = "REQUEST_ID")

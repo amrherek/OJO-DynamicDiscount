@@ -35,10 +35,11 @@ public class ContractProcessor {
 	private final DiscountGrantingService grantService;
 	private final DiscountLogService logService;
 
-	/**
-	 * Full async pipeline for a single contract: 1) evaluate 2) grant 3) record
-	 */
-    
+	
+
+	
+	
+	// pipeline for a single contract: 1) evaluate 2) grant 3) record
 	
     @Retryable(
             value = { SQLException.class ,PersistenceException.class},
@@ -77,6 +78,6 @@ public class ContractProcessor {
     @Recover
     public void recover(SQLException e, DynDiscContract contract) throws SQLException {
         log.error("Retries exhausted for contract: {}", contract.getCoId(), e);
-        throw e; // Rethrow the exception to propagate it further
+        throw e; 
     }
 }

@@ -6,15 +6,13 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "DYN_DISC_ASSIGN_STATE")
-@IdClass(DynDiscAssignStateId.class)  // Use @IdClass for composite key
+@IdClass(DynDiscAssignStateId.class)  
 @Data  
 @NoArgsConstructor  
 public class DynDiscAssignState {
@@ -41,8 +39,4 @@ public class DynDiscAssignState {
 	
 	@Column(name = "entry_date")
 	private LocalDateTime entryDate;
-
-    @ManyToOne
-    @JoinColumn(name = "assign_id", insertable = false, updatable = false)
-    private DynDiscAssign dynDiscAssign;
 }

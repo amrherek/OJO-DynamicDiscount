@@ -27,7 +27,6 @@ public class ThreadPoolConfig {
 	@Bean
 	public ThreadPoolTaskExecutor taskExecutor() {
 		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-		// executor.setCorePoolSize(Runtime.getRuntime().availableProcessors()); //
 		executor.setCorePoolSize(corePoolSize); // Minimum number of threads to keep in the pool
 		executor.setMaxPoolSize(maxPoolSize); // Maximum number of threads
 		executor.setQueueCapacity(queueCapacity); // Capacity of the queue before new tasks get rejected
@@ -35,7 +34,5 @@ public class ThreadPoolConfig {
 		executor.initialize();
 		return executor;
 	}
-	
-	
 	
 }

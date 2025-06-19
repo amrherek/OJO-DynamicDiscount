@@ -64,17 +64,20 @@ public class DiscountLogService {
     private String createContractRemark(DynDiscGrantHistory grant, boolean offerOccFailed, boolean aloOccFailed) {
         if (!offerOccFailed && !aloOccFailed) {
             String grantedDetails = Boolean.TRUE.equals(grant.getOfferOccCreated()) && Boolean.TRUE.equals(grant.getAloOccCreated())
-                    ? "both Offer and ALO OCCs granted"
+                    ? "Offer and ALO OCCs granted"
                     : Boolean.TRUE.equals(grant.getOfferOccCreated()) ? "Offer OCC granted"
                     : "ALO OCC granted";
-            return String.format("AssignId=%d: Successfully applied (%s).", grant.getAssignId(), grantedDetails);
+            return String.format("AssignId=%d: Applied (%s).", grant.getAssignId(), grantedDetails);
         }
-        return String.format("AssignId=%d: Failed due to: %s%s%s.",
-                grant.getAssignId(),
-                offerOccFailed ? "Offer OCC creation failure" : "",
-                (offerOccFailed && aloOccFailed) ? " and " : "",
-                aloOccFailed ? "ALO OCC creation failure" : "");
+        
+        String failureDetails = (offerOccFailed ? "Offer OCC creation failure" : "") +
+                (offerOccFailed && aloOccFailed ? " and " : "") +
+                (aloOccFailed ? "ALO OCC creation failure" : "");
+
+        return String.format("AssignId=%d: Failed (%s).", grant.getAssignId(), failureDetails);
     }
+    
+    
 
     private void saveContract(DynDiscContract contract) {
         try {

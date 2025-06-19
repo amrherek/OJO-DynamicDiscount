@@ -17,6 +17,10 @@ import jakarta.transaction.Transactional;
 @Repository
 public interface DynDiscContractRepository extends JpaRepository<DynDiscContract, DynDiscContractId> {
 
+	
+    
+   //Count eligible contracts based on cutoff date and target bill cycle.
+     
 	@Query(nativeQuery = true, value = """
 			WITH
 			  /*--------------------------------------------
@@ -98,7 +102,7 @@ public interface DynDiscContractRepository extends JpaRepository<DynDiscContract
 	
 	
 
-	
+   // Insert contracts based on cutoff date and target bill cycle.
 	
 	@Modifying
 	@Query(nativeQuery = true, value = """
@@ -196,15 +200,6 @@ public interface DynDiscContractRepository extends JpaRepository<DynDiscContract
     long countByReqIdAndStatus(Integer requestId, String status);
     
 
-    // Reset the status of failed contracts
-    @Modifying
-    @Query(value = """
-        UPDATE dyn_disc_contract
-        SET status = 'I'
-        WHERE request_id = :requestId AND status IN ('I', 'F')
-    """, nativeQuery = true)
-    int resetFailedContracts(Integer requestId);
-    
 
     // Retrieve contracts by request ID and status
     @Query(value = """
@@ -214,15 +209,6 @@ public interface DynDiscContractRepository extends JpaRepository<DynDiscContract
     """, nativeQuery = true)
     List<DynDiscContract> getContractsByStatus(Integer requestId, String status);
     
-
-    // Fetch all unprocessed contracts for a request ID
-    @Query(value = """
-        SELECT * 
-        FROM dyn_disc_contract 
-        WHERE request_id = :requestId AND status = 'I'
-        ORDER BY co_id
-    """, nativeQuery = true)
-    List<DynDiscContract> fetchAllUnprocessedContracts(Integer requestId);
     
 
     // Reset failed and initial contracts

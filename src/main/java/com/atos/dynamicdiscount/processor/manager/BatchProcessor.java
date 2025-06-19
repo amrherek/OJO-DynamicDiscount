@@ -21,7 +21,6 @@ import com.atos.dynamicdiscount.repository.DynDiscContractRepository;
 import com.atos.dynamicdiscount.repository.DynDiscPackageRepository;
 import com.google.common.collect.Lists;
 
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -45,7 +44,7 @@ public class BatchProcessor {
     @Value("${processing.max.concurrent.packages:10}")
     private int maxConcurrentPackages;
     
- // Reflects the concurrency limit for chunks per package
+    // Reflects the concurrency limit for chunks per package
     @Value("${processing.max.concurrent.chunks:10}")
     private int maxConcurrentChunks;
 

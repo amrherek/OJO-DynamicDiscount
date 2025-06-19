@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.atos.dynamicdiscount.enums.BillCycle;
-import com.atos.dynamicdiscount.exceptions.InvalidBillCycleException;
 import com.atos.dynamicdiscount.repository.BillCycleDefinitionRepository;
 
 import lombok.extern.slf4j.Slf4j;
