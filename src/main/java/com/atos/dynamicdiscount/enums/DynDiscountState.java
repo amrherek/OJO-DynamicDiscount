@@ -1,7 +1,7 @@
 package com.atos.dynamicdiscount.enums;
 
 public enum DynDiscountState {
-	ACTIVE("A"), SUSPENDED("S"), EXPIRED("E"), DEACTIVE("D");
+	ACTIVE("A"), SUSPENDED("S"), DEACTIVE("D");
 
 	private final String code;
 

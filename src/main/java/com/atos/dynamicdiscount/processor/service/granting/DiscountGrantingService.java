@@ -59,14 +59,19 @@ public class DiscountGrantingService {
 
         boolean success = false;
         try {
-            if (!isGrantOccEnabled) {
-                log.info("✗ OCC grant skipped as occ.grant.enabled is set to false (AssignId={})", eval.getAssignId());
-                success = true;
-                return;
-            }
+        	
+			LocalDateTime validFrom = eval.getBillPeriodEndDate().minusDays(1);
+			String remark = eval.getOccRemark() + remarkSuffix;
 
-            LocalDateTime validFrom = eval.getBillPeriodEndDate().minusDays(1);
-            String remark = eval.getOccRemark() + remarkSuffix;
+			if (!isGrantOccEnabled) {
+				jdbcTemplate.update("CALL grant_promo_Result (?, ?, ?, ?, ?, ?, ?, ?, ?,?)", eval.getRequestId(),
+						eval.getCustomerId(), eval.getCoId(), validFrom, amount * -1, remark, eval.getOccGlcode(),
+						eval.getOccSncode(), eval.getTmCode(), validFrom);
+
+				log.info("✗ OCC grant skipped as occ.grant.enabled is set to false (AssignId={})", eval.getAssignId());
+				success = true;
+				return;
+			}
 
             long startTime = System.currentTimeMillis();
 
