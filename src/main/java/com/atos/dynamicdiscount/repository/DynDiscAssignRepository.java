@@ -287,11 +287,11 @@ public interface DynDiscAssignRepository extends JpaRepository<DynDiscAssign, Lo
 			  va.offer_sncode AS offer_sncode,
 			  va.offer_valid_from_date AS offervalidfromdate,
 			  va.offer_status AS offerstatus,
-			  va.offer_price AS offerprice,
+			  GREATEST(va.offer_price, 0) AS offerprice,
 			  va.alo_sncode AS alosncode,
 			  va.alo_valid_from_date AS alovalidfromdate,
 			  va.alo_status AS alostatus,
-			  va.alo_price AS aloprice
+			  GREATEST(va.alo_price, 0) AS aloprice
 			FROM va_offer_alo_full_view va
 						""")
 			List<DynDiscAssignDTO> fetchDiscountsByPackage (@Param("packId") Integer packId,@Param("requestId")Integer requestId, @Param("targetDate") LocalDateTime targetDate);

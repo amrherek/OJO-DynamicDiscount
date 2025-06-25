@@ -45,8 +45,9 @@ public class DiscountCalculator {
         DynDiscConf conf = cfg.getDynDiscConfMap().get(dto.getDiscId().intValue());
         int monthNo = Optional.ofNullable(dto.getApplyCount().intValue()).map(Integer::intValue).orElse(0) + 1;
         boolean aloInd = conf.getAloDiscInd();
-        float baseOffer = dto.getOfferPrice().floatValue();
-        float baseAlo   = dto.getAloPrice().floatValue();
+        float baseOffer = dto.getOfferPrice() != null ? dto.getOfferPrice().floatValue() : 0.0f;
+        float baseAlo   = dto.getAloPrice() != null ? dto.getAloPrice().floatValue() : 0.0f;
+
 
         // Determine discount amounts
         boolean isFree    = offer.getFreeMonthInd()

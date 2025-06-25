@@ -109,25 +109,39 @@ public class DiscountEvaluationService {
 		return new DynDiscGrantEvalDTO(contract, eval, grant);
 	}
 
-	private DynDiscEvalHistory buildEvalHistory(DynDiscAssignDTO latest, DynDiscGrantHistory grant,
-			LocalDateTime cutoffDate) {
-		DynDiscConf conf = cfg.getDynDiscConfMap().get(latest.getDiscId().intValue());
+	private DynDiscEvalHistory buildEvalHistory(DynDiscAssignDTO latest, DynDiscGrantHistory grant, LocalDateTime cutoffDate) {
+	    DynDiscConf conf = cfg.getDynDiscConfMap().get(latest.getDiscId().intValue());
 
-		return DynDiscEvalHistory.builder().requestId(grant.getRequestId()).assignId(grant.getAssignId())
-				.customerId(latest.getCustomerId().intValue()).coId(latest.getCoId().intValue())
-				.billPeriodEndDate(cutoffDate)
-				.lbcDate(latest.getLbcDate() != null 
-		         ? latest.getLbcDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()
-		         : null)
-				.prgCode(latest.getPrgcode()).tmCode(latest.getTmCode()).discSncode(latest.getDiscSncode().intValue())
-				.discId(latest.getDiscId().intValue()).occSncode(conf.getOccSncode()).occGlcode(conf.getOccGlcode())
-				.offerSncode(latest.getOfferSnCode().intValue()).occRemark(conf.getOccRemark())
-				.offerValidFrom(
-						latest.getOfferValidFromDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime())
-				.offerStatus(String.valueOf(latest.getOfferStatus())).offerPrice(latest.getOfferPrice().floatValue())
-				.aloSncode(latest.getAloSnCode().intValue())
-				.aloValidFrom(latest.getAloValidFromDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime())
-				.aloStatus(String.valueOf(latest.getAloStatus())).aloPrice(latest.getAloPrice().floatValue()).username(username).build();
+	    return DynDiscEvalHistory.builder()
+	            .requestId(grant.getRequestId())
+	            .assignId(grant.getAssignId())
+	            .customerId(latest.getCustomerId().intValue())
+	            .coId(latest.getCoId().intValue())
+	            .billPeriodEndDate(cutoffDate)
+	            .lbcDate(latest.getLbcDate() != null
+	                    ? latest.getLbcDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()
+	                    : null)
+	            .prgCode(latest.getPrgcode())
+	            .tmCode(latest.getTmCode())
+	            .discSncode(latest.getDiscSncode().intValue())
+	            .discId(latest.getDiscId().intValue())
+	            .occSncode(conf.getOccSncode())
+	            .occGlcode(conf.getOccGlcode())
+	            .offerSncode(latest.getOfferSnCode().intValue())
+	            .occRemark(conf.getOccRemark())
+	            .offerValidFrom(latest.getOfferValidFromDate()
+	                    .toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime())
+	            .offerStatus(String.valueOf(latest.getOfferStatus()))
+	            .offerPrice(latest.getOfferPrice().floatValue())
+	            .aloSncode(latest.getAloSnCode() != null ? latest.getAloSnCode().intValue() : null)
+	            .aloValidFrom(latest.getAloValidFromDate() != null
+	                    ? latest.getAloValidFromDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()
+	                    : null)
+	            .aloStatus(latest.getAloStatus() != null ? String.valueOf(latest.getAloStatus()) : "")
+	            .aloPrice(latest.getAloPrice() != null ? latest.getAloPrice().floatValue() : 0.0f)
+	            .username(username)
+	            .build();
 	}
+
 
 }
