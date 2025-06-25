@@ -39,7 +39,7 @@ public class DiscountEvaluationService {
 
 		try {
 			if (discounts == null || discounts.isEmpty()) {
-				return buildResult(contract, null, null, "S", "No discounts provided");
+				return buildResult(contract, null, null, "S", "No valid assignment.");
 			}
 			
 			

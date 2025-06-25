@@ -41,14 +41,12 @@ public interface DynDiscContractRepository extends JpaRepository<DynDiscContract
 			    JOIN customer_all cu
 			      ON cu.customer_id = d.customer_id
 			    JOIN contract_all ca
-			      ON ca.customer_id = cu.customer_id
+			      ON ca.co_id = d.co_id
 			    WHERE
 			      d.assign_date < :targetDate
-			      --AND ca.co_id in (34230626)
 			      AND (d.delete_date IS NULL OR d.delete_date >= :targetDate)
 			      AND (d.expire_date IS NULL OR d.expire_date >= :targetDate)
 			      AND (d.last_applied_date is NULL or d.last_applied_date < :targetDate)
-
 			  ),
 
 			  /*--------------------------------------------
@@ -122,10 +120,9 @@ public interface DynDiscContractRepository extends JpaRepository<DynDiscContract
 	          ca.tmcode
 	        FROM dyn_disc_assign d
 	        JOIN customer_all cu ON cu.customer_id = d.customer_id
-	        JOIN contract_all ca ON ca.customer_id = cu.customer_id
+	        JOIN contract_all ca ON ca.co_id = d.co_id
 	        WHERE
 	          d.assign_date < :targetDate
-			  --AND ca.co_id in (34230626)
 	          AND (d.delete_date IS NULL OR d.delete_date >= :targetDate)
 	          AND (d.expire_date IS NULL OR d.expire_date >= :targetDate)
 	          AND (d.last_applied_date IS NULL OR d.last_applied_date < :targetDate)
