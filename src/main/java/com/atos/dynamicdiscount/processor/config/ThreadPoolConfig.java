@@ -15,10 +15,10 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 public class ThreadPoolConfig {
 
-	@Value("${threadpool.corePoolSize}")
+	@Value("${threadpool.default-core-size:10}")
 	private int corePoolSize;
 
-	@Value("${threadpool.maxPoolSize}")
+	@Value("${threadpool.default-max-size:20}")
 	private int maxPoolSize;
 
 	@Value("${threadpool.queueCapacity}")
