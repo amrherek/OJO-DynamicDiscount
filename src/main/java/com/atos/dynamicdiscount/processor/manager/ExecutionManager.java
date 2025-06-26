@@ -164,8 +164,8 @@ public class ExecutionManager {
         
         try {
             // Scale up the pool before processing
-            log.debug("Scaling up the connection pool.");
-            poolScalingService.scaleUp();
+            //log.debug("Scaling up the connection pool.");
+            //poolScalingService.scaleUp();
             
             // Process contracts in batches
             log.debug("Processing request packages for request ID: {}", request.getRequestId());
@@ -179,11 +179,13 @@ public class ExecutionManager {
         } catch (Exception e) {
             log.error("Error processing request ID: {}. Details: {}", request.getRequestId(), e.getMessage(), e);
             throw e; // Re-throw the exception if required
-        } finally {
+        } 
+        
+        //finally {
             // Scale down the pool after processing
-            log.debug("Scaling down the connection pool.");
-            poolScalingService.scaleDown();
-        }
+            //log.debug("Scaling down the connection pool.");
+            //poolScalingService.scaleDown();
+        //}
     }
 
 }
