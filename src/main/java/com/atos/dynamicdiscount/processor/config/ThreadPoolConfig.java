@@ -18,7 +18,7 @@ public class ThreadPoolConfig {
 	@Value("${threadpool.default-core-size}")
 	private int corePoolSize;
 
-	@Value("${threadpool.default-max-size:20}")
+	@Value("${threadpool.default-max-size}")
 	private int maxPoolSize;
 
 	@Value("${threadpool.default-queue-capacity}")

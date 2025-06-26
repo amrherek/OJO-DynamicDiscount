@@ -11,23 +11,14 @@ public class AsyncExecutor {
 
     @Autowired
     private ExecutionManager executionManager;
-    
-    @Autowired
-    private  ConnectionPoolScalingService poolScalingService;
+
 
     @Async
     public void processDiscountsAsync(String mode, String inputValue) {
     	
-        try {
-            // Scale up the pool before processing
-            poolScalingService.scaleUp(); 
 
             // Process the discounts
             executionManager.processDiscounts(mode, inputValue);
 
-        } finally {
-            // Scale down the pool after processing
-            poolScalingService.scaleDown();
-        }
     }
 }
