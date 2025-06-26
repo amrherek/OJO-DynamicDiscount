@@ -9,7 +9,6 @@ import com.atos.dynamicdiscount.enums.BillCycle;
 import com.atos.dynamicdiscount.model.entity.DynDiscRequest;
 import com.atos.dynamicdiscount.processor.config.DynDiscConfigurations;
 import com.atos.dynamicdiscount.processor.service.billcycle.BillCycleService;
-import com.atos.dynamicdiscount.processor.service.cp.ConnectionPoolScalingService;
 import com.atos.dynamicdiscount.processor.service.request.DiscountRequestService;
 
 import lombok.extern.slf4j.Slf4j;
@@ -32,9 +31,7 @@ public class ExecutionManager {
     private  DynDiscConfigurations configurations;
     
     
-    
-    @Autowired
-    private  ConnectionPoolScalingService poolScalingService;
+   
 
 
  
@@ -163,9 +160,6 @@ public class ExecutionManager {
         log.info("Starting processing for request ID: {}", request.getRequestId());
         
         try {
-            // Scale up the pool before processing
-            //log.debug("Scaling up the connection pool.");
-            //poolScalingService.scaleUp();
             
             // Process contracts in batches
             log.debug("Processing request packages for request ID: {}", request.getRequestId());
@@ -180,12 +174,6 @@ public class ExecutionManager {
             log.error("Error processing request ID: {}. Details: {}", request.getRequestId(), e.getMessage(), e);
             throw e; // Re-throw the exception if required
         } 
-        
-        //finally {
-            // Scale down the pool after processing
-            //log.debug("Scaling down the connection pool.");
-            //poolScalingService.scaleDown();
-        //}
     }
 
 }

@@ -3,6 +3,7 @@ package com.atos.dynamicdiscount.util;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import javax.sql.DataSource;
 
@@ -52,16 +53,31 @@ public class SystemStatusScheduler {
     /**
      * Logs thread pool statistics.
      */
-    private void logThreadPoolStatus() {
+
+    
+    private void logThreadPoolStatus() { 
         if (executor != null) {
-            log.info("Thread Pool: Active={}, Queue Size={}, Completed Tasks={}",
-                executor.getActiveCount(),
-                executor.getThreadPoolExecutor().getQueue().size(),
-                executor.getThreadPoolExecutor().getCompletedTaskCount());
+            ThreadPoolExecutor threadPoolExecutor = executor.getThreadPoolExecutor();
+            log.info("Thread Pool Status: " +
+                     "Active Threads = {}, " +
+                     "Queue Size = {}, " +
+                     "Completed Tasks = {}, " +
+                     "Core Pool Size = {}, " +
+                     "Maximum Pool Size = {}, " +
+                     "Current Pool Capacity = {}",
+                     threadPoolExecutor.getActiveCount(),
+                     threadPoolExecutor.getQueue().size(),
+                     threadPoolExecutor.getCompletedTaskCount(),
+                     threadPoolExecutor.getCorePoolSize(),
+                     threadPoolExecutor.getMaximumPoolSize(),
+                     threadPoolExecutor.getPoolSize());
         } else {
-            log.warn("Thread Pool: Stats unavailable");
+            log.warn("Thread Pool Status: Stats unavailable");
         }
     }
+
+    
+
 
     /**
      * Logs heap memory usage statistics.
