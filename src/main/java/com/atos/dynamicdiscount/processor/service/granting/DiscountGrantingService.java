@@ -21,7 +21,7 @@ public class DiscountGrantingService {
     private final JdbcTemplate jdbcTemplate;
 
     // Flag to control procedure call
-    @Value("${occ.grant.enabled:true}")
+    @Value("${occ.grant.enabled}")
     private boolean isGrantOccEnabled;
 
     /**
