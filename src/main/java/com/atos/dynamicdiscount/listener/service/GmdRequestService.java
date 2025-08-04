@@ -47,6 +47,11 @@ public class GmdRequestService {
                 return;
             }
             jobInitialized = true;
+            
+            
+            // Step 0: Immediately skip everything unqualified ───
+            dynDiscGmdQueueRepository.skipUnqualifiedAndArchive();
+            log.info("Skipped & archived all currently unqualified 'I' requests.");
 
             // Step 1: Fetch 'I' (initial) status requests from the processing queue
             List<DynDiscGmdQueueDTO> initialRequests = dynDiscGmdQueueRepository.fetchInitialRequests();

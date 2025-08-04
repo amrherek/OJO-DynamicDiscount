@@ -19,7 +19,7 @@ import lombok.Setter;
 public class DynDiscGmdQueue {
 
     @Id
-    @Column(name = "REQUEST", nullable = false)
+    @Column(name = "REQUEST")
     private Long request;
 
     @Column(name = "INSERTED_AT")
