@@ -16,13 +16,10 @@ import lombok.NoArgsConstructor;
 
 public class DynDiscProcess {
 
-	
+	@Id	
 	@Column(name = "PROCESS_ID")
 	private Integer processId;
 
-	@Id
-	@Column(name = "LAST_REQ_ID", nullable = false)
-	private Long lastReqId;
 
 	@Column(name = "UPDATED_AT", nullable = false)
 	private LocalDateTime updatedAt;
