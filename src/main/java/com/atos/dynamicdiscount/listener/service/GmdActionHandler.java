@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 
 import com.atos.dynamicdiscount.enums.DynDiscountState;
 import com.atos.dynamicdiscount.enums.GmdAction;
-import com.atos.dynamicdiscount.model.dto.GmdRequestHistoryDTO;
+import com.atos.dynamicdiscount.model.dto.DynDiscGmdQueueDTO;
 import com.atos.dynamicdiscount.model.entity.DynDiscAssign;
 import com.atos.dynamicdiscount.model.entity.DynDiscAssignState;
 import com.atos.dynamicdiscount.repository.DynDiscAssignRepository;
@@ -34,7 +34,7 @@ public class GmdActionHandler {
 	@Autowired
 	private DynDiscAssignStateRepository dynDiscAssignStateRepository;
 
-	public void handleAction(GmdRequestHistoryDTO request) {
+	public void handleAction(DynDiscGmdQueueDTO request) {
 		int actionId = request.getActionId().intValue();
 		GmdAction action = getActionById(actionId);
 
@@ -58,7 +58,7 @@ public class GmdActionHandler {
 	}
 
 	@Transactional
-	public void addNewDiscountInstance(GmdRequestHistoryDTO request) {
+	public void addNewDiscountInstance(DynDiscGmdQueueDTO request) {
 		try {
 			DynDiscAssign assign = buildNewDiscountAssign(request);
 			assign = dynDiscAssignRepository.save(assign);
@@ -71,7 +71,7 @@ public class GmdActionHandler {
 	}
 
 	@Transactional
-	private void updateDiscountInstanceStatus(GmdRequestHistoryDTO request, String status) {
+	private void updateDiscountInstanceStatus(DynDiscGmdQueueDTO request, String status) {
 		Optional<DynDiscAssign> dynDiscAssign = dynDiscAssignRepository.findLatestAssign(request.getCoId().intValue(),
 				request.getDiscSncode());
 		if (dynDiscAssign.isPresent()) {
@@ -95,7 +95,7 @@ public class GmdActionHandler {
 
 	}
 
-	private void addAssignState(Long assignId, GmdRequestHistoryDTO request, String status) {
+	private void addAssignState(Long assignId, DynDiscGmdQueueDTO request, String status) {
 		Integer maxSeqno = dynDiscAssignStateRepository.findMaxSeqnoByAssignId(assignId);
 		DynDiscAssignState assignState = new DynDiscAssignState();
 		assignState.setAssignId(assignId);
@@ -109,7 +109,7 @@ public class GmdActionHandler {
 		dynDiscAssignStateRepository.save(assignState);
 	}
 
-	private void handleDataIntegrityViolation(DataIntegrityViolationException e, GmdRequestHistoryDTO request) {
+	private void handleDataIntegrityViolation(DataIntegrityViolationException e, DynDiscGmdQueueDTO request) {
 		String errorMessage = e.getCause() instanceof ConstraintViolationException
 				? "  Request skipped, entry already exists in DYN_DISC_ASSIGN or DYN_DISC_ASSIGN_STATE table."
 				: "Data integrity violation: " + e.getMessage();
@@ -117,7 +117,7 @@ public class GmdActionHandler {
 		log.debug("  Detailed exception for GMD_REQUEST={}: {}", request, e.getMessage());
 	}
 
-	private DynDiscAssign buildNewDiscountAssign(GmdRequestHistoryDTO request) {
+	private DynDiscAssign buildNewDiscountAssign(DynDiscGmdQueueDTO request) {
 		DynDiscAssign assign = new DynDiscAssign();
 		assign.setCoId(request.getCoId().intValue());
 		assign.setCustomerId(request.getCustomerId().intValue());
@@ -132,7 +132,7 @@ public class GmdActionHandler {
 		return assign;
 	}
 
-	private void logActionSuccess(GmdRequestHistoryDTO request, String status, Long assignSeq, boolean isNewInstance) {
+	private void logActionSuccess(DynDiscGmdQueueDTO request, String status, Long assignSeq, boolean isNewInstance) {
 		if (isNewInstance) {
 			log.info("  GMD_REQUEST={} with ACTION_ID={}, New discount instance added. Status: {}, Assign Seq: {}",
 					request.getRequest(), request.getActionId(), status, assignSeq);

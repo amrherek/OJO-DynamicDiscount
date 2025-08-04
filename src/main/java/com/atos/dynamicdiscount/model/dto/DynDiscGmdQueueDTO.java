@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class GmdRequestHistoryDTO {
+public class DynDiscGmdQueueDTO {
 	@Id
 	private BigDecimal request;
 	private BigDecimal customerId;
