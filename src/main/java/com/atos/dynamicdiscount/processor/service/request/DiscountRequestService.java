@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import com.atos.dynamicdiscount.model.entity.DynDiscContract;
@@ -33,6 +34,8 @@ public class DiscountRequestService {
     private final DynDiscContractRepository contractRepo;
     private final DynDiscPackageRepository packageRepo;
     private final DynDiscStatisticRepository statisticRepo;
+    private final JdbcTemplate jdbcTemplate;
+
 
     @Value("${request.package.size:10000}")
     private int packageSize;
@@ -158,6 +161,10 @@ public class DiscountRequestService {
 
         // If successful, update statistics
         if (!"F".equals(newStatus)) {
+            log.info("Request ID {}: Starting gather stats procedure.", requestId);
+        	jdbcTemplate.execute("BEGIN dyn_disc_gather_query_stats; END;");
+            log.info("Request ID {}: Gather stats procedure completed.", requestId);
+
             DynDiscStatistic stats = statisticRepo.getStatsByRequestId(requestId);
             entityManager.detach(stats);
             stats.setEndDate(statusDate);

@@ -224,7 +224,7 @@ public interface DynDiscAssignRepository extends JpaRepository<DynDiscAssign, Lo
 			        ON psp.co_id = ps.co_id
 			       AND psp.sncode = ps.sncode
 			       AND psp.histno = ps.spcode_histno
-			      JOIN mpulktmb tm
+			      JOIN mpulktmb_table tm
 			        ON tm.tmcode = va.tmcode
 			       AND tm.spcode = psp.spcode
 			       AND tm.sncode = va.offer_sncode
@@ -262,7 +262,7 @@ public interface DynDiscAssignRepository extends JpaRepository<DynDiscAssign, Lo
 			        ON psp.co_id = ps.co_id
 			       AND psp.sncode = ps.sncode
 			       AND psp.histno = ps.spcode_histno
-			      LEFT JOIN mpulktmb tm
+			      LEFT JOIN mpulktmb_table tm
 			        ON tm.tmcode = va.tmcode
 			       AND tm.spcode = psp.spcode
 			       AND tm.sncode = va.alo_sncode

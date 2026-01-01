@@ -49,7 +49,6 @@ public interface DynDiscFirstLoginTrackRepository extends JpaRepository<DynDiscF
      * 3️⃣ Update processing status, processing date, and comments for a specific CO_ID using native query
      */
     @Modifying
-    @Transactional
     @Query(value = """
         UPDATE DYN_DISC_FIRST_LOGIN_TRACK
         SET PROCESSED_FLG = :processedFlg,

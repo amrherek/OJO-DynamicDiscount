@@ -142,6 +142,11 @@ public class ExecutionManager {
                     log.info("√ Successfully completed processing for request ID {}.", requestId);
                 } else {
                     log.warn("! SKIPPING processing for request ID {}: No contracts found with status 'I'.", requestId);
+                    // "New logic added to finalize requests that are resumed but have no remaining contracts to process, while still being open and lacking statistics."
+                    log.debug("Finalizing request ID: {}", request.getRequestId());
+                    requestService.finalizeRequest(request.getRequestId());
+                    log.info("Completed discount processing for request ID: {}", request.getRequestId());
+
                 }
                 break;
 
